@@ -1,0 +1,14 @@
+import { validationResult } from 'express-validator';
+import { ApiError } from '../utils/apiError.js';
+
+export const validateRequest = (req, _res, next) => {
+  const result = validationResult(req);
+  if (result.isEmpty()) {
+    return next();
+  }
+
+  return next(new ApiError(400, 'Validation failed', result.array().map((item) => ({
+    field: item.path || item.param || item.location,
+    message: item.msg
+  }))));
+};

@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary-rgb: 39 42 115;
+  --color-orange-rgb: 245 130 32;
+  --color-sky-rgb: 143 198 232;
+  --color-background-rgb: 248 250 252;
+  --color-surface-rgb: 255 255 255;
+  --color-border-rgb: 229 231 235;
+  --color-text-rgb: 15 23 42;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  background:
+    radial-gradient(circle at top right, rgb(var(--color-sky-rgb) / 0.18), transparent 28%),
+    radial-gradient(circle at left bottom, rgb(var(--color-orange-rgb) / 0.10), transparent 24%),
+    rgb(var(--color-background-rgb));
+  color: rgb(var(--color-text-rgb));
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(39, 42, 115, 0.12);
+}
