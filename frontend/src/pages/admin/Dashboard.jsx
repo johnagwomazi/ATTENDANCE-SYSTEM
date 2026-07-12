@@ -6,14 +6,9 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { StatCard } from '../../components/shared/StatCard';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { useAuthStore } from '../../store/authStore';
 import { formatDate } from '../../utils/format';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
   const { students, courses, enrollments, reports, fetchStudents, fetchCourses, fetchEnrollments, fetchReports } = useAdminStore();
 
   useEffect(() => {
@@ -28,14 +23,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-1">
       <Topbar
-        user={user}
         title="Admin control center"
         subtitle="Enterprise dashboard"
-        onLogout={async () => {
-          await logout();
-          toast.success('Logged out.');
-          navigate('/login');
-        }}
         connected
       />
 

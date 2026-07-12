@@ -2,19 +2,14 @@ import { useEffect } from 'react';
 import { BellRing, CheckCircle2, Clock3, Users } from 'lucide-react';
 import { useAdminStore } from '../../store/adminStore';
 import { useSocketStore } from '../../store/socketStore';
-import { useAuthStore } from '../../store/authStore';
 import { Topbar } from '../../components/shared/Topbar';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StatCard } from '../../components/shared/StatCard';
 import { LiveFeed } from '../../components/attendance/LiveFeed';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 
 export default function ManagerDashboard() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
   const { reports, fetchReports } = useAdminStore();
   const { liveAttendance, expiredAttempts } = useSocketStore();
 
@@ -35,14 +30,8 @@ export default function ManagerDashboard() {
   return (
     <div className="space-y-6">
       <Topbar
-        user={user}
         title="Live attendance control"
         subtitle="Manager dashboard"
-        onLogout={async () => {
-          await logout();
-          toast.success('Logged out.');
-          navigate('/login');
-        }}
         connected
       />
 

@@ -4,9 +4,9 @@ import { Sidebar } from './Sidebar';
 
 export const AppShell = ({ navItems, children, className = '', mobileNav = null }) => {
   return (
-    <div className={`min-h-screen lg:flex ${className}`}>
+    <div className={`min-h-screen ${className}`}>
       <Sidebar navItems={navItems} />
-      <main className="flex-1 px-4 pb-24 pt-4 md:px-6 lg:px-8 lg:pb-8">
+      <main className="flex-1 px-4 pb-24 pt-4 md:px-6 lg:ml-[288px] lg:px-8 lg:pb-8">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}

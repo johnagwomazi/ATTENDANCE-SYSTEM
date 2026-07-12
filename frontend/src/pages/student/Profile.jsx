@@ -3,11 +3,10 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   return (
     <div className="space-y-6">
@@ -35,16 +34,6 @@ export default function Profile() {
         </div>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button onClick={() => navigate('/student/attendance')}>Open Attendance</Button>
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              await logout();
-              toast.success('Logged out.');
-              navigate('/login');
-            }}
-          >
-            Logout
-          </Button>
         </div>
       </Card>
     </div>

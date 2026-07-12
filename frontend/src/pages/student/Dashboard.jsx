@@ -10,11 +10,10 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { formatDate, formatTime } from '../../utils/format';
-import toast from 'react-hot-toast';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { statistics, attendanceHistory, fetchStats, fetchHistory } = useAttendanceStore();
 
   useEffect(() => {
@@ -27,14 +26,8 @@ export default function StudentDashboard() {
   return (
     <div className="space-y-6">
       <Topbar
-        user={user}
         title={`Good Morning, ${user?.full_name || user?.fullName || 'Student'}`}
         subtitle="Student dashboard"
-        onLogout={async () => {
-          await logout();
-          toast.success('Logged out.');
-          navigate('/login');
-        }}
       />
 
       <PageHeader

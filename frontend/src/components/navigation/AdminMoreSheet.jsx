@@ -1,15 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut } from 'lucide-react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useAuthStore } from '../../store/authStore';
 import { adminMoreNavItems } from '../../config/adminNavigation';
 import { Button } from '../ui/Button';
 
 export const AdminMoreSheet = ({ open, onClose }) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuthStore();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -23,15 +19,6 @@ export const AdminMoreSheet = ({ open, onClose }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } finally {
-      onClose?.();
-      navigate('/login');
-    }
-  };
 
   return (
     <AnimatePresence>
@@ -96,15 +83,6 @@ export const AdminMoreSheet = ({ open, onClose }) => {
                   );
                 })}
 
-                <Button
-                  variant="secondary"
-                  onClick={handleLogout}
-                  className="min-h-12 w-full justify-start rounded-2xl px-4 text-left text-sm font-semibold focus-visible:ring-4 focus-visible:ring-primary/10 !justify-start"
-                  aria-label="Log out"
-                >
-                  <LogOut className="h-5 w-5 shrink-0" />
-                  <span>Logout</span>
-                </Button>
               </div>
             </div>
           </motion.section>
