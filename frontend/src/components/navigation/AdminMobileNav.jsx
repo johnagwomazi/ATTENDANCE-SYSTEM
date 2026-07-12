@@ -16,7 +16,10 @@ export const AdminMobileNav = () => {
   return (
     <>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 py-2 backdrop-blur md:hidden">
-        <div className="grid grid-cols-4 gap-2">
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${Math.min(adminMobileNavItems.length + 1, 4)}, minmax(0, 1fr))` }}
+        >
           {adminMobileNavItems.map((item) => {
             const Icon = item.icon || fallbackIcon[item.label] || LayoutDashboard;
 

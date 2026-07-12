@@ -1,11 +1,22 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { LogOut, UserRound } from 'lucide-react';
 import { adminMoreNavItems } from '../../config/adminNavigation';
 import { Button } from '../ui/Button';
+import { useAuthStore } from '../../store/authStore';
+
+const getProfilePath = (role) => {
+  if (role === 'student') return '/student/profile';
+  if (role === 'manager') return '/manager/dashboard';
+  if (role === 'admin') return '/admin/dashboard';
+  return '/login';
+};
 
 export const AdminMoreSheet = ({ open, onClose }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { role, logout } = useAuthStore();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -19,6 +30,12 @@ export const AdminMoreSheet = ({ open, onClose }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
+
+  const handleLogout = async () => {
+    await logout();
+    onClose?.();
+    navigate('/login');
+  };
 
   return (
     <AnimatePresence>
@@ -82,6 +99,29 @@ export const AdminMoreSheet = ({ open, onClose }) => {
                     </NavLink>
                   );
                 })}
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose?.();
+                      navigate(getProfilePath(role || 'admin'));
+                    }}
+                    className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-border px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <UserRound className="h-5 w-5 shrink-0" />
+                    <span>My Profile</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="mt-2 flex min-h-12 w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-left text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                  >
+                    <LogOut className="h-5 w-5 shrink-0" />
+                    <span>Logout</span>
+                  </button>
+                </div>
 
               </div>
             </div>
