@@ -2,11 +2,11 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { enrollStudent, endProgram, getAllEnrollments, getEnrollment, updateEnrollment } from '../services/enrollmentService.js';
 
 export const create = asyncHandler(async (req, res) => {
-  const enrollment = await enrollStudent(req.body);
+  const { enrollment, schedules } = await enrollStudent(req.body);
   return res.status(201).json({
     success: true,
     message: 'Enrollment created successfully.',
-    data: { enrollment }
+    data: { enrollment, schedules }
   });
 });
 

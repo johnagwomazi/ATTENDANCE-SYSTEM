@@ -7,9 +7,38 @@ import { validateAttendanceSessionToken } from './attendanceSessionService.js';
 import { emitToManagers, getIO } from '../config/socket.js';
 import { query } from '../config/db.js';
 
-const getMatchingSchedule = (schedules) => {
+const getMatchingSchedule = (schedules, currentTime) => {
   if (!schedules.length) return null;
-  return [...schedules].sort((left, right) => timeToMinutes(left.start_time) - timeToMinutes(right.start_time))[0];
+
+  const ordered = [...schedules].sort((left, right) => {
+    const leftStart = timeToMinutes(left.start_time);
+    const rightStart = timeToMinutes(right.start_time);
+    const leftEnd = timeToMinutes(left.end_time);
+    const rightEnd = timeToMinutes(right.end_time);
+
+    const leftActive = timeToMinutes(currentTime) >= leftStart && timeToMinutes(currentTime) <= leftEnd;
+    const rightActive = timeToMinutes(currentTime) >= rightStart && timeToMinutes(currentTime) <= rightEnd;
+
+    if (leftActive !== rightActive) {
+      return leftActive ? -1 : 1;
+    }
+
+    return leftStart - rightStart;
+  });
+
+  const activeSchedule = ordered.find((schedule) => {
+    const startMinutes = timeToMinutes(schedule.start_time);
+    const endMinutes = timeToMinutes(schedule.end_time);
+    const nowMinutes = timeToMinutes(currentTime);
+    return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+  });
+
+  if (activeSchedule) {
+    return activeSchedule;
+  }
+
+  const futureSchedule = ordered.find((schedule) => timeToMinutes(schedule.start_time) >= timeToMinutes(currentTime));
+  return futureSchedule || ordered[ordered.length - 1];
 };
 
 const createAttempt = async ({ studentId = null, courseId = null, attemptType }) => {
@@ -104,7 +133,7 @@ export const checkInStudent = async ({ student, token }) => {
     active.map((item) => item.course_id),
     currentWeekday
   );
-  const selectedSchedule = getMatchingSchedule(candidateSchedules);
+  const selectedSchedule = getMatchingSchedule(candidateSchedules, currentTime);
 
   if (!selectedSchedule) {
     const fallbackCourseId = active[0]?.course_id || null;

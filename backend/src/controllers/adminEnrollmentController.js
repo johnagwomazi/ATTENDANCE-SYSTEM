@@ -20,10 +20,10 @@ export const listEnrolledStudents = asyncHandler(async (_req, res) => {
 });
 
 export const createEnrollment = asyncHandler(async (req, res) => {
-  const enrollment = await enrollStudent(req.body);
+  const { enrollment, schedules } = await enrollStudent(req.body);
   return res.status(201).json({
     success: true,
     message: 'Enrollment created successfully.',
-    data: { enrollment }
+    data: { enrollment, schedules }
   });
 });

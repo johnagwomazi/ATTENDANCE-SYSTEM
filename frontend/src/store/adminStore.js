@@ -41,10 +41,9 @@ export const useAdminStore = create((set) => ({
   createEnrollment: async (payload) => {
     const response = await adminService.createEnrollment(payload);
     await Promise.all([
-      useAdminStore.getState().fetchUnenrolledStudents(),
-      useAdminStore.getState().fetchEnrolledStudents()
+      useAdminStore.getState().fetchStudents(),
+      useAdminStore.getState().fetchEnrollments()
     ]);
-    await useAdminStore.getState().fetchEnrollments();
     return response;
   },
 
@@ -84,7 +83,7 @@ export const useAdminStore = create((set) => ({
   },
 
   fetchEnrolledStudents: async () => {
-    const response = await adminService.fetchEnrolledStudents();
+    const response = await adminService.fetchStudents();
     const enrolledStudents = unwrapStudents(response?.data?.students || response?.students || []);
     set({
       students: enrolledStudents,

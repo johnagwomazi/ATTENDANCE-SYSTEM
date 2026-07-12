@@ -5,6 +5,7 @@ import { findCourseById } from '../models/courseModel.js';
 import {
   createSchedule,
   deleteScheduleById,
+  findSchedulesByCourseId,
   findScheduleById,
   listSchedules
 } from '../models/scheduleModel.js';
@@ -70,3 +71,35 @@ export const getSchedule = async (scheduleId) => {
 };
 
 export const getAllSchedules = async () => listSchedules();
+
+export const syncCourseSchedules = async (courseId, schedules = []) => {
+  if (!Array.isArray(schedules) || !schedules.length) {
+    return [];
+  }
+
+  const existingSchedules = await findSchedulesByCourseId(courseId);
+  const existingKeys = new Set(
+    existingSchedules.map((schedule) => `${schedule.day_of_week}|${schedule.start_time}|${schedule.end_time}`)
+  );
+
+  const createdSchedules = [];
+
+  for (const schedule of schedules) {
+    const key = `${schedule.dayOfWeek}|${schedule.startTime}|${schedule.endTime}`;
+    if (existingKeys.has(key)) {
+      continue;
+    }
+
+    const created = await createSchedule({
+      id: createId(),
+      courseId,
+      dayOfWeek: schedule.dayOfWeek,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime
+    });
+    createdSchedules.push(created);
+    existingKeys.add(key);
+  }
+
+  return createdSchedules;
+};

@@ -50,7 +50,7 @@ export const listAttendanceInRange = async ({ fromDate, toDate, courseId = null,
   return rows;
 };
 
-export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, studentId = null }) => {
+export const listAttendanceHistory = async ({ fromDate, toDate, courseId = null, studentId = null, status = null }) => {
   const filters = ['attendance_date BETWEEN ? AND ?'];
   const params = [fromDate, toDate];
 
@@ -62,6 +62,46 @@ export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, s
   if (studentId) {
     filters.push('student_id = ?');
     params.push(studentId);
+  }
+
+  if (status) {
+    filters.push('status = ?');
+    params.push(status);
+  }
+
+  const [rows] = await query(
+    `SELECT
+      a.*,
+      u.full_name AS student_name,
+      u.email AS student_email,
+      c.name AS course_name
+     FROM attendance a
+     JOIN users u ON u.id = a.student_id
+     JOIN courses c ON c.id = a.course_id
+     WHERE ${filters.join(' AND ')}
+     ORDER BY a.attendance_date DESC, a.check_in_time DESC, a.created_at DESC`,
+    params
+  );
+  return rows;
+};
+
+export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, studentId = null, status = null }) => {
+  const filters = ['attendance_date BETWEEN ? AND ?'];
+  const params = [fromDate, toDate];
+
+  if (courseId) {
+    filters.push('course_id = ?');
+    params.push(courseId);
+  }
+
+  if (studentId) {
+    filters.push('student_id = ?');
+    params.push(studentId);
+  }
+
+  if (status) {
+    filters.push('status = ?');
+    params.push(status);
   }
 
   const [rows] = await query(

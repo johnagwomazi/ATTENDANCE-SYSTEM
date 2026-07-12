@@ -6,11 +6,19 @@ export const adminService = {
     return data;
   },
   fetchEnrolledStudents: async () => {
-    const { data } = await api.get('/api/admin/students/enrolled');
+    const { data } = await api.get('/api/admin/students');
+    return data;
+  },
+  fetchStudents: async () => {
+    const { data } = await api.get('/api/admin/students');
     return data;
   },
   fetchUnenrolledStudents: async () => {
     const { data } = await api.get('/api/admin/students/unenrolled');
+    return data;
+  },
+  fetchStudentAttendance: async (studentId, params = {}) => {
+    const { data } = await api.get(`/api/admin/students/${studentId}/attendance`, { params });
     return data;
   },
   fetchCourses: async () => {
@@ -39,10 +47,6 @@ export const adminService = {
   },
   endProgram: async (id) => {
     const { data } = await api.patch(`/api/enrollments/${id}/end-program`);
-    return data;
-  },
-  fetchStudents: async () => {
-    const { data } = await api.get('/api/admin/students/enrolled');
     return data;
   },
   fetchReports: async (period, params = {}) => {

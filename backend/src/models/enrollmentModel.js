@@ -142,3 +142,45 @@ export const findActiveEnrollmentsByStudent = async (studentId) => {
   );
   return rows;
 };
+
+export const findActiveEnrollmentByStudentAndCourse = async (studentId, courseId) => {
+  const [rows] = await query(
+    `SELECT e.*, u.full_name AS student_name, c.name AS course_name
+     FROM enrollments e
+     JOIN users u ON u.id = e.student_id
+     JOIN courses c ON c.id = e.course_id
+     WHERE e.student_id = ? AND e.course_id = ? AND e.enrollment_status = 'active'
+     ORDER BY e.created_at DESC
+     LIMIT 1`,
+    [studentId, courseId]
+  );
+  return rows[0] || null;
+};
+
+export const listStudentEnrollmentRows = async () => {
+  const [rows] = await query(
+    `SELECT
+       u.id AS student_id,
+       u.full_name,
+       u.email,
+       u.phone,
+       e.id AS enrollment_id,
+       e.course_id,
+       e.enrollment_status,
+       e.program_start_date,
+       e.program_end_date,
+       e.created_at AS enrollment_created_at,
+       c.name AS course_name,
+       s.id AS schedule_id,
+       s.day_of_week,
+       s.start_time,
+       s.end_time
+     FROM users u
+     LEFT JOIN enrollments e ON e.student_id = u.id
+     LEFT JOIN courses c ON c.id = e.course_id
+     LEFT JOIN schedules s ON s.course_id = e.course_id
+     WHERE u.role = 'student'
+     ORDER BY u.full_name ASC, e.created_at DESC, e.id DESC`
+  );
+  return rows;
+};

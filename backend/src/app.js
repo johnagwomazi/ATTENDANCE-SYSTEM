@@ -8,6 +8,7 @@ import courseRoutes from './routes/courseRoutes.js';
 import enrollmentRoutes from './routes/enrollmentRoutes.js';
 import attendanceSessionRoutes from './routes/attendanceSessionRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import studentRoutes from './routes/studentRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import scheduleRoutes from './routes/scheduleRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -47,6 +48,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/attendance-sessions', attendanceSessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/students', studentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/schedules', scheduleRoutes);
 
