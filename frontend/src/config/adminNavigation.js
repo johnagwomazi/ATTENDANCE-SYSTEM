@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, BookOpen, ClipboardList, ScanLine, BarChart3, QrCode } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, ClipboardList, ScanLine, BarChart3 } from 'lucide-react';
 
 export const adminNavigationItems = [
   {
@@ -49,14 +49,6 @@ export const adminNavigationItems = [
     to: '/admin/reports',
     label: 'Reports',
     icon: BarChart3,
-    section: 'more',
-    mobileVisible: false
-  },
-  {
-    key: 'qr-display',
-    to: '/qr-display',
-    label: 'QR Display',
-    icon: QrCode,
     section: 'more',
     mobileVisible: false
   }
