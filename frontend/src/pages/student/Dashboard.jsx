@@ -89,7 +89,7 @@ export default function StudentDashboard() {
         action={<Button onClick={() => navigate('/student/attendance')}>Open Attendance</Button>}
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         <StatCard label="Present" value={summary.presentCount || 0} icon={BadgeCheck} tone="success" index={0} />
         <StatCard label="Late" value={summary.lateCount || 0} icon={Clock3} tone="orange" index={1} />
         <StatCard label="Absent" value={summary.absentCount || 0} icon={CalendarDays} tone="sky" index={2} />

@@ -146,7 +146,7 @@ export const Sidebar = ({ title = 'New Horizons', subtitle = 'Attendance Managem
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[288px] shrink-0 flex-col border-r border-white/10 bg-[#005AA9] p-5 lg:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[288px] shrink-0 flex-col border-r border-white/10 bg-[#005AA9] p-5 md:flex">
         {sidebarContent}
       </aside>
     </>
