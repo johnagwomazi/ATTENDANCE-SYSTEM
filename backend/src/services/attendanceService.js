@@ -146,13 +146,16 @@ export const checkInStudent = async ({ student, token }) => {
     throw new ApiError(400, 'You do not have a scheduled class today.');
   }
 
+  const matchedEnrollment = active.find((item) => item.course_id === selectedSchedule.course_id) || active[0] || null;
+
   const existingAttendance = await findAttendanceByStudentCourseDate(
     student.id,
     selectedSchedule.course_id,
     attendanceDate
   );
 
-  const attendanceStatus = isTodayWithinGracePeriod(selectedSchedule.start_time, currentTime, 15) ? 'present' : 'late';
+  const isLate = !isTodayWithinGracePeriod(selectedSchedule.start_time, currentTime, 15);
+  const attendanceStatus = 'present';
 
   if (existingAttendance && existingAttendance.status !== 'absent') {
     await createAttempt({
@@ -168,6 +171,8 @@ export const checkInStudent = async ({ student, token }) => {
     id: existingAttendance?.id || createId(),
     studentId: student.id,
     courseId: selectedSchedule.course_id,
+    enrollmentId: matchedEnrollment?.id || null,
+    isLate,
     attendanceDate,
     checkInTime: currentTime,
     status: attendanceStatus
@@ -177,7 +182,8 @@ export const checkInStudent = async ({ student, token }) => {
     studentName: student.fullName || student.full_name,
     course: selectedSchedule.course_name,
     time: currentTime,
-    status: attendanceStatus
+    status: attendanceStatus,
+    isLate
   };
 
   getIO()?.emit('attendance-recorded', payload);
@@ -227,7 +233,7 @@ export const getAttendanceReport = async ({ type, courseId = null, studentId = n
   const absentCount = Number(stats.absentCount || 0);
   const attendancePercentage = totalAttendance === 0
     ? 0
-    : Number((((presentCount + lateCount) / totalAttendance) * 100).toFixed(2));
+    : Number(((presentCount / totalAttendance) * 100).toFixed(2));
 
   const records = await listAttendanceInRange({
     fromDate: range.fromDate,

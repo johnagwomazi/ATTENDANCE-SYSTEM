@@ -25,7 +25,7 @@ export default function ManagerDashboard() {
     attendancePercentage: 0
   };
 
-  const expected = summary.totalAttendance || summary.presentCount + summary.lateCount + summary.absentCount;
+  const expected = summary.totalAttendance || summary.presentCount + summary.absentCount;
 
   return (
     <div className="space-y-6">

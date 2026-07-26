@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
 import { formatClock } from '../../utils/format';
+import { AttendanceBadge } from '../shared/AttendanceBadge';
 
 export const LiveFeed = ({ items = [], title = 'Live Attendance' }) => {
   return (
@@ -25,7 +26,7 @@ export const LiveFeed = ({ items = [], title = 'Live Attendance' }) => {
                   <p className="font-bold text-text">{item.studentName || item.student_name}</p>
                   <p className="text-sm text-slate-500">{item.course}</p>
                 </div>
-                <Badge variant={item.status === 'late' ? 'orange' : 'success'}>{item.status}</Badge>
+                <AttendanceBadge status={item.status} isLate={item.isLate} />
               </div>
               <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                 {formatClock(item.time || item.created_at)}

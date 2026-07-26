@@ -10,17 +10,12 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { formatDate, formatTime } from '../../utils/format';
+import { AttendanceBadge } from '../../components/shared/AttendanceBadge';
 
 const statusVariant = {
   active: 'success',
   inactive: 'warning',
   unassigned: 'default'
-};
-
-const attendanceVariant = {
-  present: 'success',
-  late: 'orange',
-  absent: 'danger'
 };
 
 const emptyOverview = {
@@ -224,9 +219,7 @@ export default function StudentDashboard() {
                     <p className="font-semibold text-text">{item.course_name || 'Attendance'}</p>
                     <p className="text-sm text-slate-500">{formatDate(item.attendance_date)}</p>
                   </div>
-                  <Badge variant={attendanceVariant[item.status] || 'default'} className="capitalize">
-                    {item.status}
-                  </Badge>
+                  <AttendanceBadge status={item.status} isLate={item.is_late || item.isLate} />
                 </div>
                 <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                   Check-in: {item.check_in_time ? formatTime(item.check_in_time) : '-'}

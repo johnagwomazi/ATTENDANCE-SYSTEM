@@ -44,12 +44,13 @@ export const myDashboard = asyncHandler(async (req, res) => {
 });
 
 export const myAttendanceHistory = asyncHandler(async (req, res) => {
-  const { courseId = null, from = null, to = null, status = null } = req.query;
+  const { courseId = null, from = null, to = null, status = null, search = null } = req.query;
   const history = await getStudentAttendanceHistory(req.user.id, {
     courseId: courseId || null,
     from: from || null,
     to: to || null,
-    status: status || null
+    status: status || null,
+    search: search || null
   });
 
   return res.status(200).json({

@@ -67,6 +67,17 @@ export default function Enrollments() {
     setOpen(true);
   };
 
+  const resetForAnotherEnrollment = () => {
+    if (!selectedStudent) return;
+
+    reset({
+      ...defaultValues,
+      studentId: selectedStudent.id,
+      courseSchedules: [{ dayOfWeek: '', startTime: '', endTime: '' }]
+    });
+    setValue('studentId', selectedStudent.id, { shouldValidate: false });
+  };
+
   const closeModal = () => {
     setOpen(false);
     setSelectedStudent(null);
@@ -91,15 +102,33 @@ export default function Enrollments() {
     }
   });
 
+  const onSubmitAndAddAnother = handleSubmit(async (values) => {
+    try {
+      const payload = {
+        ...values,
+        courseSchedules: (values.courseSchedules || []).filter(
+          (schedule) => schedule?.dayOfWeek && schedule?.startTime && schedule?.endTime
+        )
+      };
+
+      await createEnrollment(payload);
+      toast.success('Enrollment created successfully. Add another course if needed.');
+      resetForAnotherEnrollment();
+      await Promise.all([fetchStudents(), fetchEnrollments()]);
+    } catch (error) {
+      toast.error(error.message || 'Unable to create enrollment.');
+    }
+  });
+
   const selectedName = useMemo(() => selectedStudent?.fullName || selectedStudent?.full_name || '', [selectedStudent]);
 
   const availableStudents = useMemo(() => {
     return students
       .filter((student) => String(student.status || '').toLowerCase() === 'unassigned')
       .sort((left, right) => {
-        const leftName = String(left.fullName || left.full_name || '').toLowerCase();
-        const rightName = String(right.fullName || right.full_name || '').toLowerCase();
-        return leftName.localeCompare(rightName);
+      const leftName = String(left.fullName || left.full_name || '').toLowerCase();
+      const rightName = String(right.fullName || right.full_name || '').toLowerCase();
+      return leftName.localeCompare(rightName);
       });
   }, [students]);
 
@@ -142,7 +171,9 @@ export default function Enrollments() {
                     </div>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <Badge variant="default">No active courses</Badge>
+                      <Badge variant="default">
+                        {student.courseSummary || student.activeCourseNames?.join(', ') || 'No active courses'}
+                      </Badge>
                     </div>
 
                     <div className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -239,6 +270,8 @@ export default function Enrollments() {
       students={students}
       courses={courses}
       onSubmit={onSubmit}
+      secondaryActionLabel="Save & Add Another"
+      onSecondaryAction={onSubmitAndAddAnother}
       submitLabel={isSubmitting ? 'Saving...' : 'Create Enrollment'}
       hideStudent
     />

@@ -12,6 +12,8 @@ export const EnrollmentForm = ({
   students = [],
   courses = [],
   onSubmit,
+  secondaryActionLabel = null,
+  onSecondaryAction = null,
   submitLabel = 'Save Enrollment',
   hideStudent = false
 }) => {
@@ -142,7 +144,12 @@ export const EnrollmentForm = ({
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-3">
+        {secondaryActionLabel && onSecondaryAction ? (
+          <Button type="button" variant="secondary" onClick={onSecondaryAction}>
+            {secondaryActionLabel}
+          </Button>
+        ) : null}
         <Button type="submit">
           {submitLabel}
         </Button>

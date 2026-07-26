@@ -1,5 +1,31 @@
 import { query } from '../config/db.js';
 
+const applyAttendanceStatusFilter = (filters, params, status) => {
+  if (!status) return;
+
+  const normalized = String(status).toLowerCase();
+
+  if (normalized === 'late') {
+    filters.push("(a.is_late = 1 OR a.status = 'late')");
+    return;
+  }
+
+  if (normalized === 'present') {
+    filters.push('a.status = ?');
+    params.push('present');
+    return;
+  }
+
+  if (normalized === 'absent') {
+    filters.push('a.status = ?');
+    params.push('absent');
+    return;
+  }
+
+  filters.push('a.status = ?');
+  params.push(status);
+};
+
 export const findAttendanceByStudentCourseDate = async (studentId, courseId, attendanceDate) => {
   const [rows] = await query(
     'SELECT * FROM attendance WHERE student_id = ? AND course_id = ? AND attendance_date = ? LIMIT 1',
@@ -12,18 +38,22 @@ export const upsertAttendance = async ({
   id,
   studentId,
   courseId,
+  enrollmentId = null,
+  isLate = false,
   attendanceDate,
   checkInTime = null,
   status
 }) => {
   await query(
-    `INSERT INTO attendance (id, student_id, course_id, attendance_date, check_in_time, status)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO attendance (id, student_id, course_id, enrollment_id, attendance_date, check_in_time, is_late, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
+       enrollment_id = VALUES(enrollment_id),
+       is_late = VALUES(is_late),
        check_in_time = VALUES(check_in_time),
        status = VALUES(status),
        updated_at = CURRENT_TIMESTAMP`,
-    [id, studentId, courseId, attendanceDate, checkInTime, status]
+    [id, studentId, courseId, enrollmentId, attendanceDate, checkInTime, isLate ? 1 : 0, status]
   );
 
   return findAttendanceByStudentCourseDate(studentId, courseId, attendanceDate);
@@ -50,7 +80,7 @@ export const listAttendanceInRange = async ({ fromDate, toDate, courseId = null,
   return rows;
 };
 
-export const listAttendanceHistory = async ({ fromDate, toDate, courseId = null, studentId = null, status = null }) => {
+export const listAttendanceHistory = async ({ fromDate, toDate, courseId = null, studentId = null, status = null, search = null }) => {
   const filters = ['attendance_date BETWEEN ? AND ?'];
   const params = [fromDate, toDate];
 
@@ -64,9 +94,12 @@ export const listAttendanceHistory = async ({ fromDate, toDate, courseId = null,
     params.push(studentId);
   }
 
-  if (status) {
-    filters.push('status = ?');
-    params.push(status);
+  applyAttendanceStatusFilter(filters, params, status);
+
+  if (search) {
+    filters.push('(LOWER(c.name) LIKE ? OR LOWER(a.status) LIKE ?)');
+    const pattern = `%${String(search).toLowerCase()}%`;
+    params.push(pattern, pattern);
   }
 
   const [rows] = await query(
@@ -85,7 +118,7 @@ export const listAttendanceHistory = async ({ fromDate, toDate, courseId = null,
   return rows;
 };
 
-export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, studentId = null, status = null }) => {
+export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, studentId = null, status = null, search = null }) => {
   const filters = ['attendance_date BETWEEN ? AND ?'];
   const params = [fromDate, toDate];
 
@@ -99,18 +132,22 @@ export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, s
     params.push(studentId);
   }
 
-  if (status) {
-    filters.push('status = ?');
-    params.push(status);
+  applyAttendanceStatusFilter(filters, params, status);
+
+  if (search) {
+    filters.push('(LOWER(c.name) LIKE ? OR LOWER(a.status) LIKE ?)');
+    const pattern = `%${String(search).toLowerCase()}%`;
+    params.push(pattern, pattern);
   }
 
   const [rows] = await query(
     `SELECT
       COUNT(*) AS totalAttendance,
-      COALESCE(SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END), 0) AS presentCount,
-      COALESCE(SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END), 0) AS lateCount,
-      COALESCE(SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END), 0) AS absentCount
-     FROM attendance
+      COALESCE(SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END), 0) AS presentCount,
+      COALESCE(SUM(CASE WHEN a.is_late = 1 OR a.status = 'late' THEN 1 ELSE 0 END), 0) AS lateCount,
+      COALESCE(SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END), 0) AS absentCount
+     FROM attendance a
+     JOIN courses c ON c.id = a.course_id
      WHERE ${filters.join(' AND ')}`,
     params
   );
@@ -125,10 +162,10 @@ export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, s
 
 export const createAbsentRowsForDate = async (attendanceDate, weekday) => {
   await query(
-    `INSERT INTO attendance (id, student_id, course_id, attendance_date, check_in_time, status)
-     SELECT UUID(), grouped.student_id, grouped.course_id, ?, NULL, 'absent'
+    `INSERT INTO attendance (id, student_id, course_id, enrollment_id, attendance_date, check_in_time, is_late, status)
+     SELECT UUID(), grouped.student_id, grouped.course_id, grouped.enrollment_id, ?, NULL, 0, 'absent'
      FROM (
-       SELECT DISTINCT e.student_id, e.course_id
+       SELECT DISTINCT e.id AS enrollment_id, e.student_id, e.course_id
        FROM enrollments e
        INNER JOIN schedules s ON s.course_id = e.course_id
        LEFT JOIN attendance a

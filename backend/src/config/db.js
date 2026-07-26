@@ -31,6 +31,10 @@ const maxStartupAttempts = Number(process.env.DB_BOOTSTRAP_MAX_RETRIES || 3);
 
 const requiredTables = ['users', 'courses', 'enrollments', 'schedules', 'attendance_sessions', 'attendance', 'entry_attempts'];
 const authRequiredColumns = ['id', 'full_name', 'email', 'phone', 'password', 'role', 'is_active'];
+const attendanceOptionalColumns = [
+  { name: 'enrollment_id', definition: 'CHAR(36) NULL AFTER course_id' },
+  { name: 'is_late', definition: 'TINYINT(1) NOT NULL DEFAULT 0 AFTER check_in_time' }
+];
 const requiredIndexes = [
   { table: 'enrollments', name: 'idx_enrollments_student_status', columns: 'student_id, enrollment_status' },
   { table: 'enrollments', name: 'idx_enrollments_course_status', columns: 'course_id, enrollment_status' },
@@ -186,6 +190,52 @@ const validateAuthTable = async (connection) => {
   }
 };
 
+const ensureAttendanceColumns = async (connection) => {
+  logStep('Validating attendance columns...');
+
+  const [rows] = await connection.query(
+    `SELECT COLUMN_NAME
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'attendance'`,
+    [databaseName]
+  );
+
+  const columnNames = new Set(rows.map((row) => row.COLUMN_NAME));
+
+  for (const column of attendanceOptionalColumns) {
+    if (columnNames.has(column.name)) {
+      continue;
+    }
+
+    try {
+      await connection.query(`ALTER TABLE attendance ADD COLUMN ${column.name} ${column.definition}`);
+      logStep(`Added missing attendance column ${column.name}`);
+    } catch (error) {
+      if (error?.code === 'ER_DUP_FIELDNAME') {
+        logStep(`Attendance column ${column.name} already exists; skipping`);
+        continue;
+      }
+
+      error.step = 'ensure-attendance-columns';
+      error.location = 'src/config/db.js';
+      error.action = `Add the ${column.name} column to the attendance table manually or start with a clean schema.`;
+      throw error;
+    }
+  }
+
+  if (columnNames.has('is_late')) {
+    try {
+      await connection.query("UPDATE attendance SET is_late = 1, status = 'present' WHERE status = 'late'");
+      logStep('Normalized legacy late attendance rows');
+    } catch (error) {
+      error.step = 'normalize-attendance-status';
+      error.location = 'src/config/db.js';
+      error.action = 'Run the legacy attendance normalization manually and restart the backend.';
+      throw error;
+    }
+  }
+};
+
 const ensureIndexes = async (connection) => {
   logStep('Validating indexes...');
 
@@ -258,6 +308,7 @@ const performBootstrap = async () => {
   try {
     await validateRequiredTables(connection);
     await validateAuthTable(connection);
+    await ensureAttendanceColumns(connection);
     await ensureIndexes(connection);
   } finally {
     await connection.end();

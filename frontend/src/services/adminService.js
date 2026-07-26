@@ -21,6 +21,10 @@ export const adminService = {
     const { data } = await api.get(`/api/admin/students/${studentId}/attendance`, { params });
     return data;
   },
+  fetchStudentProfile: async (studentId, params = {}) => {
+    const { data } = await api.get(`/api/admin/students/${studentId}/profile`, { params });
+    return data;
+  },
   fetchCourses: async () => {
     const { data } = await api.get('/api/courses');
     return data;

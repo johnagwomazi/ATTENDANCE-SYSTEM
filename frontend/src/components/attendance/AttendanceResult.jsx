@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
 import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { AttendanceBadge } from '../shared/AttendanceBadge';
 
 export const AttendanceResult = ({ result }) => {
   if (!result) return null;
@@ -20,11 +20,11 @@ export const AttendanceResult = ({ result }) => {
               ['Student Name', result.record?.studentName],
               ['Course', result.record?.course],
               ['Time', result.record?.time],
-              ['Status', result.record?.status]
+              ['Status', <AttendanceBadge status={result.record?.status} isLate={result.record?.isLate} />]
             ].map(([label, value]) => (
               <div key={label} className="rounded-2xl border border-border bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
-                <p className="mt-2 text-sm font-bold text-text">{value}</p>
+                <div className="mt-2 text-sm font-bold text-text">{value}</div>
               </div>
             ))}
           </div>

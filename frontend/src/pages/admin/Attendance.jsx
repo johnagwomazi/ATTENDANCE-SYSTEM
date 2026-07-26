@@ -117,8 +117,8 @@ export default function AdminAttendance() {
   const presentCount = Number(summary.presentCount || 0);
   const lateCount = Number(summary.lateCount || 0);
   const absentCount = Number(summary.absentCount || 0);
-  const expectedCount = Number(summary.totalAttendance || 0) || (presentCount + lateCount + absentCount);
-  const remainingCount = Math.max(expectedCount - presentCount - lateCount, 0);
+  const expectedCount = Number(summary.totalAttendance || 0) || (presentCount + absentCount);
+  const remainingCount = Math.max(expectedCount - presentCount, 0);
 
   const activeCourses = useMemo(() => {
     const uniqueCourses = [...new Set(liveAttendance.map((item) => item.course).filter(Boolean))];

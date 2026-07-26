@@ -10,17 +10,12 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { formatDate, formatTime } from '../../utils/format';
+import { AttendanceBadge } from '../../components/shared/AttendanceBadge';
 
 const statusVariant = {
   active: 'success',
   inactive: 'warning',
   unassigned: 'default'
-};
-
-const attendanceVariant = {
-  present: 'success',
-  late: 'orange',
-  absent: 'danger'
 };
 
 const emptyHistoryState = {
@@ -101,10 +96,25 @@ export default function Students() {
     setAttendanceFilters(nextFilters);
 
     try {
-      const response = await adminService.fetchStudentAttendance(student.id, {
+      const response = await adminService.fetchStudentProfile(student.id, {
         courseId: defaultCourseId === 'all' ? null : defaultCourseId
       });
-      setAttendanceReport(response?.data || response || emptyHistoryState);
+      const profile = response?.data || response || {};
+      setSelectedStudent(profile.student || student);
+      setAttendanceReport({
+        summary: profile.attendanceSummary || emptyHistoryState.summary,
+        records: profile.attendanceRecords || [],
+        range: profile.attendanceRange || null,
+        filters: profile.attendanceFilters || nextFilters,
+        student: profile.student || student,
+        enrollments: profile.enrollments || [],
+        activeEnrollments: profile.activeEnrollments || [],
+        status: profile.status || student.status,
+        courseSummary: profile.courseSummary || student.courseSummary || '',
+        activeCourseNames: profile.activeCourseNames || student.activeCourseNames || [],
+        programStartDate: profile.programStartDate || student.programStartDate || null,
+        programEndDate: profile.programEndDate || student.programEndDate || null
+      });
     } finally {
       setAttendanceLoading(false);
     }
@@ -134,8 +144,22 @@ export default function Students() {
         to: attendanceFilters.to || null,
         status: attendanceFilters.status && attendanceFilters.status !== 'all' ? attendanceFilters.status : null
       };
-      const response = await adminService.fetchStudentAttendance(selectedStudent.id, params);
-      setAttendanceReport(response?.data || response || emptyHistoryState);
+      const response = await adminService.fetchStudentProfile(selectedStudent.id, params);
+      const profile = response?.data || response || {};
+      setAttendanceReport({
+        summary: profile.attendanceSummary || emptyHistoryState.summary,
+        records: profile.attendanceRecords || [],
+        range: profile.attendanceRange || null,
+        filters: profile.attendanceFilters || params,
+        student: profile.student || selectedStudent,
+        enrollments: profile.enrollments || [],
+        activeEnrollments: profile.activeEnrollments || [],
+        status: profile.status || selectedStudent.status,
+        courseSummary: profile.courseSummary || selectedStudent.courseSummary || '',
+        activeCourseNames: profile.activeCourseNames || selectedStudent.activeCourseNames || [],
+        programStartDate: profile.programStartDate || selectedStudent.programStartDate || null,
+        programEndDate: profile.programEndDate || selectedStudent.programEndDate || null
+      });
     } finally {
       setAttendanceLoading(false);
     }
@@ -143,6 +167,7 @@ export default function Students() {
 
   const summary = attendanceReport?.summary || emptyHistoryState.summary;
   const attendanceRecords = attendanceReport?.records || [];
+  const studentProfile = attendanceReport?.student || selectedStudent;
 
   return (
     <div className="space-y-6">
@@ -334,6 +359,26 @@ export default function Students() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Card className="p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Student</p>
+                    <p className="mt-2 text-lg font-black text-text">{studentProfile?.fullName || studentProfile?.full_name || '-'}</p>
+                    <p className="mt-1 text-sm text-slate-500">{studentProfile?.email || '-'}</p>
+                  </Card>
+                  <Card className="p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Courses</p>
+                    <p className="mt-2 text-lg font-black text-text">{(attendanceReport?.enrollments || []).length}</p>
+                    <p className="mt-1 text-sm text-slate-500">{attendanceReport?.courseSummary || 'No courses assigned yet'}</p>
+                  </Card>
+                  <Card className="p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Program Status</p>
+                    <p className="mt-2 text-lg font-black text-text capitalize">{attendanceReport?.status || 'unassigned'}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {formatDate(attendanceReport?.programStartDate || studentProfile?.programStartDate)} - {formatDate(attendanceReport?.programEndDate || studentProfile?.programEndDate)}
+                    </p>
+                  </Card>
+                </div>
+
                 <div className="grid gap-3 md:grid-cols-4">
                   <Card className="p-4">
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Present Days</p>
@@ -419,9 +464,7 @@ export default function Students() {
                           <p className="font-semibold text-text">{record.course_name || record.courseName}</p>
                           <p className="text-sm text-slate-500">{formatDate(record.attendance_date)}</p>
                         </div>
-                        <Badge variant={attendanceVariant[record.status] || 'default'} className="capitalize">
-                          {record.status}
-                        </Badge>
+                        <AttendanceBadge status={record.status} isLate={record.is_late || record.isLate} />
                       </div>
                       <p className="mt-3 text-sm text-slate-600">
                         Check In Time: {record.check_in_time ? formatTime(record.check_in_time) : '-'}

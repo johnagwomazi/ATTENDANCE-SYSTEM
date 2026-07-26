@@ -131,7 +131,7 @@ export const getStudentAttendanceSummary = async (studentId) => {
     totalAttendance,
     attendancePercentage: totalAttendance === 0
       ? 0
-      : Number((((presentCount + lateCount) / totalAttendance) * 100).toFixed(2)),
+      : Number(((presentCount / totalAttendance) * 100).toFixed(2)),
     range
   };
 };
@@ -147,7 +147,8 @@ export const getStudentAttendanceHistory = async (studentId, filters = {}) => {
     ...range,
     studentId,
     courseId: filters.courseId || null,
-    status: filters.status || null
+    status: filters.status || null,
+    search: filters.search || null
   });
   const totalAttendance = Number(summary.totalAttendance || 0);
   const presentCount = Number(summary.presentCount || 0);
@@ -158,7 +159,8 @@ export const getStudentAttendanceHistory = async (studentId, filters = {}) => {
     ...range,
     studentId,
     courseId: filters.courseId || null,
-    status: filters.status || null
+    status: filters.status || null,
+    search: filters.search || null
   });
 
   return {
@@ -178,7 +180,7 @@ export const getStudentAttendanceHistory = async (studentId, filters = {}) => {
       totalAttendance,
       attendancePercentage: totalAttendance === 0
         ? 0
-        : Number((((presentCount + lateCount) / totalAttendance) * 100).toFixed(2))
+        : Number(((presentCount / totalAttendance) * 100).toFixed(2))
     },
     records
   };

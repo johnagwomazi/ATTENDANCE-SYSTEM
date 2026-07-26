@@ -1,37 +1,68 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAttendanceStore } from '../../store/attendanceStore';
+import { studentService } from '../../services/studentService';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Badge } from '../../components/ui/Badge';
 import { formatDate, formatTime } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
+import { AttendanceBadge } from '../../components/shared/AttendanceBadge';
 
 const pageSize = 8;
 
 export default function History() {
-  const { attendanceHistory, fetchHistory } = useAttendanceStore();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
+  const [records, setRecords] = useState([]);
+  const [summary, setSummary] = useState({
+    presentCount: 0,
+    lateCount: 0,
+    absentCount: 0,
+    attendancePercentage: 0
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+    let active = true;
 
-  const filtered = useMemo(() => {
-    return attendanceHistory.filter((item) => {
-      const matchesQuery = [item.course, item.studentName, item.status]
-        .join(' ')
-        .toLowerCase()
-        .includes(query.toLowerCase());
-      const matchesStatus = status === 'all' ? true : item.status === status;
-      return matchesQuery && matchesStatus;
-    });
-  }, [attendanceHistory, query, status]);
+    const loadHistory = async () => {
+      setLoading(true);
+      try {
+        const params = {
+          search: query.trim() || null,
+          status: status === 'all' ? null : status
+        };
+        const response = await studentService.fetchAttendanceHistory(params);
+        const nextRecords = response?.data?.records || response?.records || [];
+        const nextSummary = response?.data?.summary || response?.summary || {};
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const current = filtered.slice((page - 1) * pageSize, page * pageSize);
+        if (!active) return;
+
+        setRecords(nextRecords);
+        setSummary({
+          presentCount: nextSummary.presentCount || 0,
+          lateCount: nextSummary.lateCount || 0,
+          absentCount: nextSummary.absentCount || 0,
+          attendancePercentage: nextSummary.attendancePercentage || 0
+        });
+        setPage(1);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadHistory();
+
+    return () => {
+      active = false;
+    };
+  }, [query, status]);
+
+  const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
+  const current = useMemo(() => records.slice((page - 1) * pageSize, page * pageSize), [page, records]);
 
   return (
     <Card className="p-6 md:p-8">
@@ -39,10 +70,20 @@ export default function History() {
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Attendance History</p>
           <h1 className="mt-3 text-3xl font-black text-text">Search and review your records</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Present: {summary.presentCount || 0} | Late: {summary.lateCount || 0} | Absent: {summary.absentCount || 0} | {summary.attendancePercentage || 0}%
+          </p>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
-          <Input value={query} onChange={(event) => { setPage(1); setQuery(event.target.value); }} placeholder="Search by course or status" />
-          <Select value={status} onChange={(event) => { setPage(1); setStatus(event.target.value); }}>
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by course or status"
+          />
+          <Select
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
             <option value="all">All Statuses</option>
             <option value="present">Present</option>
             <option value="late">Late</option>
@@ -65,14 +106,18 @@ export default function History() {
           <tbody className="divide-y divide-border bg-surface">
             {current.length ? current.map((item) => (
               <tr key={item.id}>
-                <td className="px-5 py-4 text-sm font-medium text-text">{formatDate(item.date || item.created_at)}</td>
-                <td className="px-5 py-4"><Badge variant={item.status === 'late' ? 'orange' : item.status === 'present' ? 'success' : 'default'}>{item.status}</Badge></td>
-                <td className="px-5 py-4 text-sm text-slate-600">{formatTime(item.time)}</td>
-                <td className="px-5 py-4 text-sm text-slate-600">{item.course || '-'}</td>
+                <td className="px-5 py-4 text-sm font-medium text-text">{formatDate(item.date || item.attendance_date || item.created_at)}</td>
+                <td className="px-5 py-4">
+                  <AttendanceBadge status={item.status} isLate={item.is_late || item.isLate} />
+                </td>
+                <td className="px-5 py-4 text-sm text-slate-600">{formatTime(item.time || item.check_in_time)}</td>
+                <td className="px-5 py-4 text-sm text-slate-600">{item.course || item.course_name || '-'}</td>
               </tr>
             )) : (
               <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-sm text-slate-500">No matching records found.</td>
+                <td colSpan={4} className="px-6 py-12 text-center text-sm text-slate-500">
+                  {loading ? 'Loading attendance history...' : 'No matching records found.'}
+                </td>
               </tr>
             )}
           </tbody>

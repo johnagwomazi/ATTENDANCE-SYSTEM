@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { attendanceService } from '../services/attendanceService';
-import { pushHistory, loadHistory } from '../utils/storage';
-import { formatClock } from '../utils/format';
+import { studentService } from '../services/studentService';
 
 const defaultStats = {
   present: 0,
@@ -15,18 +14,26 @@ const deriveStats = (items = []) => {
   const counts = items.reduce(
     (acc, item) => {
       acc.total += 1;
-      acc[item.status] = (acc[item.status] || 0) + 1;
+      const normalized = String(item.status || '').toLowerCase();
+      if (normalized === 'absent') {
+        acc.absent += 1;
+      } else {
+        acc.present += 1;
+        if (item.isLate || normalized === 'late') {
+          acc.late += 1;
+        }
+      }
       return acc;
     },
     { ...defaultStats }
   );
-  counts.attendancePercentage = counts.total ? Math.round(((counts.present + counts.late) / counts.total) * 100) : 0;
+  counts.attendancePercentage = counts.total ? Math.round((counts.present / counts.total) * 100) : 0;
   return counts;
 };
 
 export const useAttendanceStore = create((set, get) => ({
   todayAttendance: [],
-  attendanceHistory: loadHistory(),
+  attendanceHistory: [],
   statistics: defaultStats,
   loading: false,
 
@@ -42,9 +49,10 @@ export const useAttendanceStore = create((set, get) => ({
         course: event.course || '',
         time: event.time || attendance?.check_in_time || '',
         status: attendance?.status || event.status || 'present',
+        isLate: Boolean(attendance?.is_late || event.isLate),
         date: new Date().toISOString()
       };
-      const nextHistory = pushHistory(record);
+      const nextHistory = [record, ...get().attendanceHistory].slice(0, 200);
       const nextToday = [record, ...get().todayAttendance].slice(0, 20);
       set({
         todayAttendance: nextToday,
@@ -59,24 +67,39 @@ export const useAttendanceStore = create((set, get) => ({
     }
   },
 
-  fetchHistory: async () => {
-    const items = loadHistory();
+  fetchHistory: async (params = {}) => {
+    const response = await studentService.fetchAttendanceHistory(params);
+    const items = response?.data?.records || response?.records || [];
     set({
       attendanceHistory: items,
-      statistics: deriveStats(items)
+      statistics: {
+        ...defaultStats,
+        present: response?.data?.summary?.presentCount || response?.summary?.presentCount || 0,
+        late: response?.data?.summary?.lateCount || response?.summary?.lateCount || 0,
+        absent: response?.data?.summary?.absentCount || response?.summary?.absentCount || 0,
+        total: response?.data?.summary?.totalAttendance || response?.summary?.totalAttendance || items.length,
+        attendancePercentage: response?.data?.summary?.attendancePercentage || response?.summary?.attendancePercentage || 0
+      }
     });
     return items;
   },
 
-  fetchStats: async () => {
-    const items = loadHistory();
-    const stats = deriveStats(items);
+  fetchStats: async (params = {}) => {
+    const response = await studentService.fetchAttendanceHistory(params);
+    const summary = response?.data?.summary || response?.summary || {};
+    const stats = {
+      present: summary.presentCount || 0,
+      late: summary.lateCount || 0,
+      absent: summary.absentCount || 0,
+      total: summary.totalAttendance || 0,
+      attendancePercentage: summary.attendancePercentage || 0
+    };
     set({ statistics: stats });
     return stats;
   },
 
   appendLiveRecord: (record) => {
-    const nextHistory = pushHistory(record);
+    const nextHistory = [record, ...get().attendanceHistory].slice(0, 200);
     set({
       todayAttendance: [record, ...get().todayAttendance].slice(0, 20),
       attendanceHistory: nextHistory,
