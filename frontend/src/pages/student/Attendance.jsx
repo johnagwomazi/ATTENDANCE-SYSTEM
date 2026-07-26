@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -16,8 +16,25 @@ import { Spinner } from '../../components/ui/Spinner';
 import { motion } from 'framer-motion';
 
 const schema = z.object({
-  token: z.string().min(8, 'A valid QR token is required.')
+  token: z.string().regex(/^[A-Z0-9]{8}$/i, 'A valid 8-character QR code is required.')
 });
+
+const extractAttendanceToken = (value = '') => {
+  const trimmed = value.trim().toUpperCase();
+
+  try {
+    const url = new URL(trimmed);
+    const token = url.searchParams.get('token');
+    if (token) {
+      return token.trim().toUpperCase();
+    }
+  } catch (_error) {
+    // Not a URL, fall back to the raw text.
+  }
+
+  const match = trimmed.match(/[A-Z0-9]{8}/);
+  return match ? match[0] : trimmed;
+};
 
 export default function Attendance({ publicMode = false }) {
   const [searchParams] = useSearchParams();
@@ -42,7 +59,7 @@ export default function Attendance({ publicMode = false }) {
 
   useEffect(() => {
     if (tokenFromUrl) {
-      setValue('token', tokenFromUrl);
+      setValue('token', extractAttendanceToken(tokenFromUrl));
     }
   }, [tokenFromUrl, setValue]);
 
@@ -90,9 +107,9 @@ export default function Attendance({ publicMode = false }) {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Student attendance</p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-text">Check in with your QR token</h1>
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-text">Check in with your QR code</h1>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-500">
-              Scan the QR code, confirm the token, and submit your attendance in one smooth flow.
+              Scan the QR code, confirm the 8-character code, and submit your attendance in one smooth flow.
             </p>
           </div>
           <Button variant="secondary" onClick={() => setScannerEnabled((value) => !value)}>
@@ -106,7 +123,15 @@ export default function Attendance({ publicMode = false }) {
               <Controller
                 name="token"
                 control={control}
-                render={({ field }) => <Input {...field} label="QR Token" placeholder="Paste or scan the token" error={errors?.token?.message} />}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    onChange={(event) => field.onChange(event.target.value.toUpperCase())}
+                    label="QR Code"
+                    placeholder="Enter the 8-character code"
+                    error={errors?.token?.message}
+                  />
+                )}
               />
               <div className="flex flex-wrap gap-3">
                 <Button type="submit" disabled={isSubmitting}>
@@ -125,8 +150,8 @@ export default function Attendance({ publicMode = false }) {
                 <p className="mb-3 text-sm font-semibold text-text">Camera Scanner</p>
                 <QrScanner
                   onScan={(decodedText) => {
-                    setValue('token', decodedText, { shouldValidate: true });
-                    toast.success('QR token detected.');
+                    setValue('token', extractAttendanceToken(decodedText), { shouldValidate: true });
+                    toast.success('QR code detected.');
                   }}
                   onError={() => {}}
                 />

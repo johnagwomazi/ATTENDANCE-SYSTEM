@@ -1,11 +1,25 @@
 import QRCode from 'qrcode';
+import { randomBytes } from 'crypto';
 import { createId } from '../utils/uuid.js';
 import { createAttendanceSession, findAttendanceSessionByToken } from '../models/attendanceSessionModel.js';
 
 const SESSION_MINUTES = 10;
+const SESSION_CODE_LENGTH = 8;
+const SESSION_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+const createSessionCode = (length = SESSION_CODE_LENGTH) => {
+  const bytes = randomBytes(length);
+  let code = '';
+
+  for (let index = 0; index < length; index += 1) {
+    code += SESSION_CODE_CHARS[bytes[index] % SESSION_CODE_CHARS.length];
+  }
+
+  return code;
+};
 
 export const createDynamicAttendanceSession = async () => {
-  const token = createId();
+  const token = createSessionCode();
   const expiresAt = new Date(Date.now() + SESSION_MINUTES * 60 * 1000);
   const clientUrl = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(',')[0].trim()

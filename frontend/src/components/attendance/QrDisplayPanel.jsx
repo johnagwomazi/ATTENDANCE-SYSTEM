@@ -6,7 +6,7 @@ export const QrDisplayPanel = ({ session, countdown }) => {
     <Card className="mx-auto flex w-full max-w-2xl flex-col items-center gap-8 px-6 py-10 text-center md:px-10">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.28em] text-orange">New Horizons</p>
-        <h2 className="mt-3 text-4xl font-black tracking-tight text-text">Student Check-In</h2>
+        <h2 className="mt-3 text-2xl font-black tracking-tight text-text">Student Check-In</h2>
       </div>
       <div className="rounded-[32px] border border-border bg-white p-5 shadow-soft">
         {session?.qrCodeDataUrl ? (
@@ -17,9 +17,12 @@ export const QrDisplayPanel = ({ session, countdown }) => {
           </div>
         )}
       </div>
-      <p className="max-w-lg text-sm leading-7 text-slate-500">
-        Students scan this code to open the attendance flow. The session refreshes automatically every 30 seconds.
-      </p>
+      <div className="w-full max-w-lg rounded-[28px] border border-border bg-slate-50 px-5 py-4">
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Session Code</p>
+        <p className="mt-3 text-2xl font-black tracking-[0.38em] text-text">
+          {session?.token || '--------'}
+        </p>
+      </div>
       <CountdownTimer seconds={countdown} />
     </Card>
   );
