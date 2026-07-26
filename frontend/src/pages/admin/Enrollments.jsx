@@ -103,6 +103,8 @@ export default function Enrollments() {
       });
   }, [students]);
 
+  const latestEnrollments = enrollments.slice(0, 3);
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -254,7 +256,7 @@ export default function Enrollments() {
           </div>
 
           <div className="space-y-3">
-            {enrollments.slice(0, 5).map((enrollment) => (
+            {latestEnrollments.map((enrollment) => (
               <div key={enrollment.id} className="rounded-2xl border border-border bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>

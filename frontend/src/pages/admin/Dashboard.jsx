@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   }, [fetchStudents, fetchCourses, fetchEnrollments, fetchReports]);
 
   const summary = reports.today?.summary || {};
+  const latestEnrollments = enrollments.slice(0, 3);
 
   return (
     <div className="space-y-1">
@@ -51,7 +52,7 @@ export default function AdminDashboard() {
             <Badge variant="primary">{enrollments.length} total</Badge>
           </div>
           <div className="space-y-3">
-            {enrollments.slice(0, 5).map((item) => (
+            {latestEnrollments.map((item) => (
               <div key={item.id} className="flex items-center justify-between rounded-2xl border border-border bg-slate-50 p-4">
                 <div>
                   <p className="font-bold text-text">{item.student_name}</p>
