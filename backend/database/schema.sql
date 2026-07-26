@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS courses (
   id CHAR(36) PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   description TEXT NULL,
+  class_days JSON NULL,
+  start_date DATE NULL,
+  end_date DATE NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -28,8 +31,7 @@ CREATE TABLE IF NOT EXISTS enrollments (
   id CHAR(36) PRIMARY KEY,
   student_id CHAR(36) NOT NULL,
   course_id CHAR(36) NOT NULL,
-  program_start_date DATE NOT NULL,
-  program_end_date DATE NOT NULL,
+  session ENUM('morning', 'afternoon') NOT NULL DEFAULT 'morning',
   enrollment_status ENUM('active', 'completed', 'expired', 'suspended') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

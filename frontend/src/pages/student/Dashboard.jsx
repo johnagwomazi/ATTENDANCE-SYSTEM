@@ -84,8 +84,8 @@ export default function StudentDashboard() {
 
       <PageHeader
         eyebrow="Overview"
-        title="Your courses, schedules, and attendance"
-        description="See every active course, its weekly timetable, and your current program status in one place."
+        title="Your courses, sessions, and attendance"
+        description="See every active course, its class days, selected session, and your current program status in one place."
         action={<Button onClick={() => navigate('/student/attendance')}>Open Attendance</Button>}
       />
 
@@ -101,7 +101,7 @@ export default function StudentDashboard() {
           <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-extrabold text-text">Program status</h3>
-              <p className="text-sm text-slate-500">Enrollment details and weekly schedule snapshot.</p>
+              <p className="text-sm text-slate-500">Enrollment details and course schedule snapshot.</p>
             </div>
             <Badge variant={statusVariant[overview.status] || 'default'} className="capitalize">
               {overview.status}
@@ -140,7 +140,7 @@ export default function StudentDashboard() {
         <Card className="p-6">
           <div className="mb-5">
             <h3 className="text-lg font-extrabold text-text">Schedules</h3>
-            <p className="text-sm text-slate-500">Each course can have one or more class days.</p>
+            <p className="text-sm text-slate-500">Each course owns its class days and session window.</p>
           </div>
 
           <div className="space-y-4">
@@ -150,25 +150,17 @@ export default function StudentDashboard() {
                   <div>
                     <p className="font-semibold text-text">{enrollment.courseName}</p>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      {formatDate(enrollment.programStartDate)} - {formatDate(enrollment.programEndDate)}
+                      {enrollment.classDaysLabel || 'No class days'}
                     </p>
                   </div>
                   <Badge variant={enrollment.status === 'active' ? 'success' : 'warning'} className="capitalize">
-                    {enrollment.status}
+                    {enrollment.sessionLabel || enrollment.session || enrollment.status}
                   </Badge>
                 </div>
 
-                <div className="mt-3 space-y-2">
-                  {(enrollment.schedules || []).length ? enrollment.schedules.map((schedule) => (
-                    <div key={`${enrollment.enrollmentId}-${schedule.id || schedule.dayOfWeek}-${schedule.startTime}`} className="rounded-2xl bg-white px-4 py-3">
-                      <p className="text-sm font-semibold text-text">{schedule.dayOfWeek}</p>
-                      <p className="text-sm text-slate-500">
-                        {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
-                      </p>
-                    </div>
-                  )) : (
-                    <p className="rounded-2xl bg-white px-4 py-3 text-sm text-slate-500">No schedule attached yet.</p>
-                  )}
+                <div className="mt-3 rounded-2xl bg-white px-4 py-3">
+                  <p className="text-sm font-semibold text-text">Session: {enrollment.sessionLabel || enrollment.session || 'Morning'}</p>
+                  <p className="text-sm text-slate-500">{enrollment.sessionTimeLabel || '9:00 AM - 12:00 PM'}</p>
                 </div>
               </div>
             )) : (
@@ -192,11 +184,13 @@ export default function StudentDashboard() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold text-text">{enrollment.courseName}</p>
-                    <p className="text-xs text-slate-500">{formatDate(enrollment.programStartDate)} - {formatDate(enrollment.programEndDate)}</p>
+                    <p className="text-xs text-slate-500">{enrollment.classDaysLabel || 'No class days'}</p>
                   </div>
                   <Badge variant="success">Active</Badge>
                 </div>
-                <p className="mt-3 text-sm text-slate-600">{(enrollment.schedules || []).length} schedule block(s)</p>
+                <p className="mt-3 text-sm text-slate-600">
+                  {enrollment.sessionLabel || enrollment.session || 'Morning'} {enrollment.sessionTimeLabel ? `(${enrollment.sessionTimeLabel})` : ''}
+                </p>
               </div>
             )) : (
               <div className="rounded-2xl border border-dashed border-border bg-slate-50 p-8 text-center text-sm text-slate-500 md:col-span-2">

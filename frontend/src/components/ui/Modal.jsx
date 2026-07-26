@@ -12,7 +12,7 @@ export const Modal = ({ open, title, children, onClose, footer }) => {
           onClick={onClose}
         >
           <motion.div
-            className="w-full max-w-xl rounded-[28px] border border-border bg-surface p-6 shadow-lift"
+            className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[28px] border border-border bg-surface p-6 shadow-lift"
             initial={{ scale: 0.95, y: 20, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 20, opacity: 0 }}

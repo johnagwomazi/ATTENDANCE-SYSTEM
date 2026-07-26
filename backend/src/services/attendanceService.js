@@ -2,44 +2,11 @@ import { ApiError } from '../utils/apiError.js';
 import { createId } from '../utils/uuid.js';
 import { getCurrentDate, getCurrentTime, getCurrentWeekday, getDateDaysAgo, getMonthStartDate, isTodayWithinGracePeriod, timeToMinutes } from '../utils/date.js';
 import { createEntryAttempt } from '../models/entryAttemptModel.js';
-import { findAttendanceByStudentCourseDate, getAttendanceCounts, listAttendanceInRange, upsertAttendance } from '../models/attendanceModel.js';
+import { ensureAbsentRowsForDate, findAttendanceByStudentCourseDate, getAttendanceCounts, listAttendanceInRange, upsertAttendance } from '../models/attendanceModel.js';
 import { validateAttendanceSessionToken } from './attendanceSessionService.js';
 import { emitToManagers, getIO } from '../config/socket.js';
 import { query } from '../config/db.js';
-
-const getMatchingSchedule = (schedules, currentTime) => {
-  if (!schedules.length) return null;
-
-  const ordered = [...schedules].sort((left, right) => {
-    const leftStart = timeToMinutes(left.start_time);
-    const rightStart = timeToMinutes(right.start_time);
-    const leftEnd = timeToMinutes(left.end_time);
-    const rightEnd = timeToMinutes(right.end_time);
-
-    const leftActive = timeToMinutes(currentTime) >= leftStart && timeToMinutes(currentTime) <= leftEnd;
-    const rightActive = timeToMinutes(currentTime) >= rightStart && timeToMinutes(currentTime) <= rightEnd;
-
-    if (leftActive !== rightActive) {
-      return leftActive ? -1 : 1;
-    }
-
-    return leftStart - rightStart;
-  });
-
-  const activeSchedule = ordered.find((schedule) => {
-    const startMinutes = timeToMinutes(schedule.start_time);
-    const endMinutes = timeToMinutes(schedule.end_time);
-    const nowMinutes = timeToMinutes(currentTime);
-    return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
-  });
-
-  if (activeSchedule) {
-    return activeSchedule;
-  }
-
-  const futureSchedule = ordered.find((schedule) => timeToMinutes(schedule.start_time) >= timeToMinutes(currentTime));
-  return futureSchedule || ordered[ordered.length - 1];
-};
+import { getSessionDefinition, isCourseOpenOnWeekday, normalizeClassDays } from '../utils/courseSchedule.js';
 
 const createAttempt = async ({ studentId = null, courseId = null, attemptType }) => {
   await createEntryAttempt({
@@ -53,7 +20,7 @@ const createAttempt = async ({ studentId = null, courseId = null, attemptType })
 
 const getActiveAndBlockedEnrollments = async (studentId) => {
   const [rows] = await query(
-    `SELECT e.*, c.name AS course_name
+    `SELECT e.*, c.name AS course_name, c.class_days, c.start_date, c.end_date
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.student_id = ?
@@ -67,16 +34,16 @@ const getActiveAndBlockedEnrollments = async (studentId) => {
   };
 };
 
-const getSchedulesForCoursesToday = async (courseIds, weekday) => {
+const getLegacySchedulesForCourses = async (courseIds) => {
   if (!courseIds.length) return [];
 
   const placeholders = courseIds.map(() => '?').join(', ');
   const [rows] = await query(
-    `SELECT s.*, c.name AS course_name
+    `SELECT s.*
      FROM schedules s
-     JOIN courses c ON c.id = s.course_id
-     WHERE s.course_id IN (${placeholders}) AND s.day_of_week = ?`,
-    [...courseIds, weekday]
+     WHERE s.course_id IN (${placeholders})
+     ORDER BY s.day_of_week, s.start_time`,
+    courseIds
   );
   return rows;
 };
@@ -129,13 +96,69 @@ export const checkInStudent = async ({ student, token }) => {
     throw new ApiError(400, 'The QR session has expired. Please scan a fresh code.');
   }
 
-  const candidateSchedules = await getSchedulesForCoursesToday(
-    active.map((item) => item.course_id),
-    currentWeekday
+  const legacySchedules = await getLegacySchedulesForCourses(
+    active.map((item) => item.course_id)
   );
-  const selectedSchedule = getMatchingSchedule(candidateSchedules, currentTime);
+  const legacySchedulesByCourse = legacySchedules.reduce((acc, schedule) => {
+    if (!acc.has(schedule.course_id)) {
+      acc.set(schedule.course_id, []);
+    }
+    acc.get(schedule.course_id).push(schedule);
+    return acc;
+  }, new Map());
 
-  if (!selectedSchedule) {
+  const candidateEnrollments = active.map((item) => {
+    const classDays = normalizeClassDays(item.class_days);
+    const nowMinutes = timeToMinutes(currentTime);
+
+    if (classDays.length) {
+      if (!isCourseOpenOnWeekday(classDays, currentWeekday)) {
+        return null;
+      }
+
+      const sessionDefinition = getSessionDefinition(item.session);
+      const startMinutes = timeToMinutes(sessionDefinition.startTime);
+      const endMinutes = timeToMinutes(sessionDefinition.endTime);
+
+      if (nowMinutes < startMinutes || nowMinutes > endMinutes) {
+        return null;
+      }
+
+      return {
+        enrollment: item,
+        window: {
+          startTime: sessionDefinition.startTime,
+          endTime: sessionDefinition.endTime,
+          label: sessionDefinition.label
+        }
+      };
+    }
+
+    const legacySchedule = (legacySchedulesByCourse.get(item.course_id) || []).find((schedule) => schedule.day_of_week === currentWeekday);
+    if (!legacySchedule) {
+      return null;
+    }
+
+    const startMinutes = timeToMinutes(legacySchedule.start_time);
+    const endMinutes = timeToMinutes(legacySchedule.end_time);
+    if (nowMinutes < startMinutes || nowMinutes > endMinutes) {
+      return null;
+    }
+
+    return {
+      enrollment: item,
+      window: {
+        startTime: legacySchedule.start_time,
+        endTime: legacySchedule.end_time,
+        label: legacySchedule.day_of_week
+      }
+    };
+  }).filter(Boolean);
+
+  const selectedMatch = candidateEnrollments[0] || null;
+  const selectedEnrollment = selectedMatch?.enrollment || null;
+
+  if (!selectedEnrollment) {
     const fallbackCourseId = active[0]?.course_id || null;
     await createAttempt({
       studentId: student.id,
@@ -146,21 +169,22 @@ export const checkInStudent = async ({ student, token }) => {
     throw new ApiError(400, 'You do not have a scheduled class today.');
   }
 
-  const matchedEnrollment = active.find((item) => item.course_id === selectedSchedule.course_id) || active[0] || null;
+  const selectedWindow = selectedMatch.window;
+  const selectedCourseName = selectedEnrollment.course_name;
 
   const existingAttendance = await findAttendanceByStudentCourseDate(
     student.id,
-    selectedSchedule.course_id,
+    selectedEnrollment.course_id,
     attendanceDate
   );
 
-  const isLate = !isTodayWithinGracePeriod(selectedSchedule.start_time, currentTime, 15);
+  const isLate = !isTodayWithinGracePeriod(selectedWindow.startTime, currentTime, 15);
   const attendanceStatus = 'present';
 
   if (existingAttendance && existingAttendance.status !== 'absent') {
     await createAttempt({
       studentId: student.id,
-      courseId: selectedSchedule.course_id,
+      courseId: selectedEnrollment.course_id,
       attemptType: 'duplicate_attempt'
     });
 
@@ -170,8 +194,8 @@ export const checkInStudent = async ({ student, token }) => {
   const attendanceRecord = await upsertAttendance({
     id: existingAttendance?.id || createId(),
     studentId: student.id,
-    courseId: selectedSchedule.course_id,
-    enrollmentId: matchedEnrollment?.id || null,
+    courseId: selectedEnrollment.course_id,
+    enrollmentId: selectedEnrollment.id || null,
     isLate,
     attendanceDate,
     checkInTime: currentTime,
@@ -180,10 +204,11 @@ export const checkInStudent = async ({ student, token }) => {
 
   const payload = {
     studentName: student.fullName || student.full_name,
-    course: selectedSchedule.course_name,
+    course: selectedCourseName,
     time: currentTime,
     status: attendanceStatus,
-    isLate
+    isLate,
+    session: selectedWindow.label
   };
 
   getIO()?.emit('attendance-recorded', payload);
@@ -218,8 +243,16 @@ const buildRange = (type) => {
   };
 };
 
+const backfillAbsentRowsIfNeeded = async (range) => {
+  const today = getCurrentDate();
+  if (range.fromDate <= today && range.toDate >= today) {
+    await ensureAbsentRowsForDate(today, getCurrentWeekday());
+  }
+};
+
 export const getAttendanceReport = async ({ type, courseId = null, studentId = null, from = null, to = null }) => {
   const range = from && to ? { fromDate: from, toDate: to } : buildRange(type);
+  await backfillAbsentRowsIfNeeded(range);
   const stats = await getAttendanceCounts({
     fromDate: range.fromDate,
     toDate: range.toDate,

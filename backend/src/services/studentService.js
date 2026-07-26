@@ -1,21 +1,33 @@
 import { ApiError } from '../utils/apiError.js';
-import { getCurrentDate } from '../utils/date.js';
+import { getCurrentDate, getCurrentWeekday } from '../utils/date.js';
 import { findUserById } from '../models/userModel.js';
 import { listStudentEnrollmentRows } from '../models/enrollmentModel.js';
-import { getAttendanceCounts, listAttendanceHistory } from '../models/attendanceModel.js';
+import { ensureAbsentRowsForDate, getAttendanceCounts, listAttendanceHistory } from '../models/attendanceModel.js';
+import { getClassDaysLabel, getSessionDefinition, normalizeClassDays } from '../utils/courseSchedule.js';
 
 const buildEnrollmentSummary = (rows = []) => {
   const grouped = new Map();
 
   for (const row of rows) {
     if (!grouped.has(row.enrollment_id)) {
+      const initialClassDays = normalizeClassDays(row.class_days);
+      const initialSession = String(row.session || 'morning').toLowerCase();
+      const sessionDefinition = getSessionDefinition(initialSession);
+
       grouped.set(row.enrollment_id, {
         enrollmentId: row.enrollment_id,
         courseId: row.course_id,
         courseName: row.course_name,
         status: row.enrollment_status,
-        programStartDate: row.program_start_date,
-        programEndDate: row.program_end_date,
+        session: initialSession,
+        sessionLabel: sessionDefinition.label,
+        sessionTimeLabel: sessionDefinition.displayTime,
+        classDays: initialClassDays,
+        classDaysLabel: getClassDaysLabel(initialClassDays),
+        startDate: row.start_date || row.program_start_date || null,
+        endDate: row.end_date || row.program_end_date || null,
+        programStartDate: row.start_date || row.program_start_date || null,
+        programEndDate: row.end_date || row.program_end_date || null,
         createdAt: row.enrollment_created_at,
         schedules: []
       });
@@ -26,22 +38,33 @@ const buildEnrollmentSummary = (rows = []) => {
     }
 
     const enrollment = grouped.get(row.enrollment_id);
-    const scheduleKey = `${row.day_of_week}|${row.start_time}|${row.end_time}`;
-    const hasSchedule = enrollment.schedules.some(
-      (schedule) => `${schedule.dayOfWeek}|${schedule.startTime}|${schedule.endTime}` === scheduleKey
-    );
-
-    if (!hasSchedule) {
-      enrollment.schedules.push({
-        id: row.schedule_id,
-        dayOfWeek: row.day_of_week,
-        startTime: row.start_time,
-        endTime: row.end_time
-      });
+    const rowClassDays = normalizeClassDays(row.class_days);
+    if (rowClassDays.length) {
+      continue;
     }
+
+    const nextClassDays = Array.from(new Set([...(enrollment.classDays || []), row.day_of_week]));
+    enrollment.classDays = nextClassDays;
+    enrollment.classDaysLabel = getClassDaysLabel(nextClassDays);
+    enrollment.schedules = [{
+      id: row.schedule_id || row.enrollment_id,
+      dayOfWeek: enrollment.classDaysLabel,
+      startTime: getSessionDefinition(enrollment.session).startTime,
+      endTime: getSessionDefinition(enrollment.session).endTime
+    }];
   }
 
-  return Array.from(grouped.values());
+  return Array.from(grouped.values()).map((studentEnrollment) => ({
+    ...studentEnrollment,
+    schedules: studentEnrollment.schedules.length
+      ? studentEnrollment.schedules
+      : [{
+          id: studentEnrollment.enrollmentId,
+          dayOfWeek: studentEnrollment.classDaysLabel,
+          startTime: getSessionDefinition(studentEnrollment.session).startTime,
+          endTime: getSessionDefinition(studentEnrollment.session).endTime
+        }]
+  }));
 };
 
 export const getStudentDashboardOverview = async (studentId) => {
@@ -90,6 +113,11 @@ export const getStudentSchedules = async (studentId) => {
     courseId: enrollment.courseId,
     courseName: enrollment.courseName,
     status: enrollment.status,
+    session: enrollment.session,
+    sessionLabel: enrollment.sessionLabel,
+    sessionTimeLabel: enrollment.sessionTimeLabel,
+    classDays: enrollment.classDays,
+    classDaysLabel: enrollment.classDaysLabel,
     programStartDate: enrollment.programStartDate,
     programEndDate: enrollment.programEndDate,
     schedules: enrollment.schedules
@@ -98,7 +126,7 @@ export const getStudentSchedules = async (studentId) => {
 
 const buildAttendanceRange = (rows = []) => {
   const dates = rows
-    .map((row) => row.program_start_date)
+    .flatMap((row) => [row.start_date || row.program_start_date, row.end_date || row.program_end_date])
     .filter(Boolean)
     .sort((left, right) => new Date(left).getTime() - new Date(right).getTime());
 
@@ -109,10 +137,18 @@ const buildAttendanceRange = (rows = []) => {
   };
 };
 
+const backfillAbsentRowsIfNeeded = async (range) => {
+  const today = getCurrentDate();
+  if (range.fromDate <= today && range.toDate >= today) {
+    await ensureAbsentRowsForDate(today, getCurrentWeekday());
+  }
+};
+
 export const getStudentAttendanceSummary = async (studentId) => {
   const rows = await listStudentEnrollmentRows();
   const studentRows = rows.filter((row) => row.student_id === studentId && row.enrollment_id);
   const range = buildAttendanceRange(studentRows);
+  await backfillAbsentRowsIfNeeded(range);
   const summary = await getAttendanceCounts({
     ...range,
     studentId
@@ -142,6 +178,7 @@ export const getStudentAttendanceHistory = async (studentId, filters = {}) => {
   const range = filters.from && filters.to
     ? { fromDate: filters.from, toDate: filters.to }
     : buildAttendanceRange(studentRows);
+  await backfillAbsentRowsIfNeeded(range);
 
   const summary = await getAttendanceCounts({
     ...range,

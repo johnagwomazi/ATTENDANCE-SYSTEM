@@ -14,16 +14,7 @@ import { formatDate } from '../../utils/format';
 const defaultValues = {
   studentId: '',
   courseId: '',
-  programStartDate: '',
-  programEndDate: '',
-  courseSchedules: [{ dayOfWeek: '', startTime: '', endTime: '' }]
-};
-
-const formatScheduleSummary = (schedules = []) => {
-  if (!schedules.length) return 'No schedule added yet';
-  return schedules
-    .map((schedule) => `${schedule.dayOfWeek} ${schedule.startTime?.slice(0, 5)} - ${schedule.endTime?.slice(0, 5)}`)
-    .join(' | ');
+  session: 'morning'
 };
 
 export default function Enrollments() {
@@ -60,8 +51,7 @@ export default function Enrollments() {
     setSelectedStudent(student);
     reset({
       ...defaultValues,
-      studentId: student.id,
-      courseSchedules: [{ dayOfWeek: '', startTime: '', endTime: '' }]
+      studentId: student.id
     });
     setValue('studentId', student.id, { shouldValidate: false });
     setOpen(true);
@@ -72,8 +62,7 @@ export default function Enrollments() {
 
     reset({
       ...defaultValues,
-      studentId: selectedStudent.id,
-      courseSchedules: [{ dayOfWeek: '', startTime: '', endTime: '' }]
+      studentId: selectedStudent.id
     });
     setValue('studentId', selectedStudent.id, { shouldValidate: false });
   };
@@ -84,19 +73,27 @@ export default function Enrollments() {
     reset(defaultValues);
   };
 
+  const submitEnrollment = async (values, keepOpen = false) => {
+    const payload = {
+      studentId: values.studentId,
+      courseId: values.courseId,
+      session: values.session
+    };
+
+    await createEnrollment(payload);
+    toast.success(keepOpen ? 'Enrollment created successfully. Add another course if needed.' : 'Enrollment created successfully.');
+
+    if (keepOpen) {
+      resetForAnotherEnrollment();
+      return;
+    }
+
+    closeModal();
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     try {
-      const payload = {
-        ...values,
-        courseSchedules: (values.courseSchedules || []).filter(
-          (schedule) => schedule?.dayOfWeek && schedule?.startTime && schedule?.endTime
-        )
-      };
-
-      await createEnrollment(payload);
-      toast.success('Enrollment created successfully.');
-      closeModal();
-      await Promise.all([fetchStudents(), fetchEnrollments()]);
+      await submitEnrollment(values, false);
     } catch (error) {
       toast.error(error.message || 'Unable to create enrollment.');
     }
@@ -104,17 +101,7 @@ export default function Enrollments() {
 
   const onSubmitAndAddAnother = handleSubmit(async (values) => {
     try {
-      const payload = {
-        ...values,
-        courseSchedules: (values.courseSchedules || []).filter(
-          (schedule) => schedule?.dayOfWeek && schedule?.startTime && schedule?.endTime
-        )
-      };
-
-      await createEnrollment(payload);
-      toast.success('Enrollment created successfully. Add another course if needed.');
-      resetForAnotherEnrollment();
-      await Promise.all([fetchStudents(), fetchEnrollments()]);
+      await submitEnrollment(values, true);
     } catch (error) {
       toast.error(error.message || 'Unable to create enrollment.');
     }
@@ -126,9 +113,9 @@ export default function Enrollments() {
     return students
       .filter((student) => String(student.status || '').toLowerCase() === 'unassigned')
       .sort((left, right) => {
-      const leftName = String(left.fullName || left.full_name || '').toLowerCase();
-      const rightName = String(right.fullName || right.full_name || '').toLowerCase();
-      return leftName.localeCompare(rightName);
+        const leftName = String(left.fullName || left.full_name || '').toLowerCase();
+        const rightName = String(right.fullName || right.full_name || '').toLowerCase();
+        return leftName.localeCompare(rightName);
       });
   }, [students]);
 
@@ -142,7 +129,7 @@ export default function Enrollments() {
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Enrollment management</p>
             <h1 className="text-3xl font-black text-text">Enroll students into courses</h1>
             <p className="max-w-2xl text-sm text-slate-500">
-              Select any student, choose a course, define the program dates, and attach one or more class day schedules.
+              Select a student, choose a course, and assign the session they will attend.
             </p>
           </div>
           <Badge variant="primary">{availableStudents.length} students</Badge>
@@ -244,39 +231,33 @@ export default function Enrollments() {
         />
       </div>
 
-<Modal
-  open={open}
-  title={selectedStudent ? `Enroll ${selectedName}` : 'Enroll student'}
-  onClose={closeModal}
-  footer={null}
->
-  <div className="max-h-[80vh] overflow-y-auto pr-2">
-    <div className="mb-4 rounded-2xl border border-border bg-slate-50 p-4">
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
-        Selected student
-      </p>
-      <p className="mt-2 text-base font-semibold text-text">
-        {selectedName || 'No student selected'}
-      </p>
-      <p className="text-sm text-slate-500">
-        {selectedStudent?.email || ''}
-      </p>
-    </div>
+      <Modal
+        open={open}
+        title={selectedStudent ? `Enroll ${selectedName}` : 'Enroll student'}
+        onClose={closeModal}
+        footer={null}
+      >
+        <div className="max-h-[80vh] overflow-y-auto pr-2">
+          <div className="mb-4 rounded-2xl border border-border bg-slate-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Selected student</p>
+            <p className="mt-2 text-base font-semibold text-text">{selectedName || 'No student selected'}</p>
+            <p className="text-sm text-slate-500">{selectedStudent?.email || ''}</p>
+          </div>
 
-    <EnrollmentForm
-      control={control}
-      register={register}
-      errors={errors}
-      students={students}
-      courses={courses}
-      onSubmit={onSubmit}
-      secondaryActionLabel="Save & Add Another"
-      onSecondaryAction={onSubmitAndAddAnother}
-      submitLabel={isSubmitting ? 'Saving...' : 'Create Enrollment'}
-      hideStudent
-    />
-  </div>
-</Modal>
+          <EnrollmentForm
+            control={control}
+            register={register}
+            errors={errors}
+            students={students}
+            courses={courses}
+            onSubmit={onSubmit}
+            secondaryActionLabel="Save & Add Another"
+            onSecondaryAction={onSubmitAndAddAnother}
+            submitLabel={isSubmitting ? 'Saving...' : 'Create Enrollment'}
+            hideStudent
+          />
+        </div>
+      </Modal>
 
       {enrollments.length ? (
         <Card className="p-6">
@@ -302,11 +283,11 @@ export default function Enrollments() {
                 </div>
 
                 <p className="mt-3 text-sm text-slate-600">
-                  {formatDate(enrollment.program_start_date)} - {formatDate(enrollment.program_end_date)}
+                  {enrollment.classDaysLabel || 'No class days'} | {enrollment.sessionLabel || 'Morning'} ({enrollment.sessionTimeLabel || '9:00 AM - 12:00 PM'})
                 </p>
 
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Schedules: {formatScheduleSummary(enrollment.schedules || [])}
+                  Program: {formatDate(enrollment.startDate || enrollment.program_start_date)} - {formatDate(enrollment.endDate || enrollment.program_end_date)}
                 </p>
               </div>
             ))}

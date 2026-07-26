@@ -31,9 +31,17 @@ const maxStartupAttempts = Number(process.env.DB_BOOTSTRAP_MAX_RETRIES || 3);
 
 const requiredTables = ['users', 'courses', 'enrollments', 'schedules', 'attendance_sessions', 'attendance', 'entry_attempts'];
 const authRequiredColumns = ['id', 'full_name', 'email', 'phone', 'password', 'role', 'is_active'];
+const courseOptionalColumns = [
+  { name: 'class_days', definition: 'JSON NULL AFTER description' },
+  { name: 'start_date', definition: 'DATE NULL AFTER class_days' },
+  { name: 'end_date', definition: 'DATE NULL AFTER start_date' }
+];
 const attendanceOptionalColumns = [
   { name: 'enrollment_id', definition: 'CHAR(36) NULL AFTER course_id' },
   { name: 'is_late', definition: 'TINYINT(1) NOT NULL DEFAULT 0 AFTER check_in_time' }
+];
+const enrollmentOptionalColumns = [
+  { name: 'session', definition: "ENUM('morning', 'afternoon') NOT NULL DEFAULT 'morning' AFTER course_id" }
 ];
 const requiredIndexes = [
   { table: 'enrollments', name: 'idx_enrollments_student_status', columns: 'student_id, enrollment_status' },
@@ -236,6 +244,70 @@ const ensureAttendanceColumns = async (connection) => {
   }
 };
 
+const ensureCourseColumns = async (connection) => {
+  logStep('Validating course columns...');
+
+  const [rows] = await connection.query(
+    `SELECT COLUMN_NAME
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'courses'`,
+    [databaseName]
+  );
+
+  const columnNames = new Set(rows.map((row) => row.COLUMN_NAME));
+
+  for (const column of courseOptionalColumns) {
+    if (columnNames.has(column.name)) continue;
+
+    try {
+      await connection.query(`ALTER TABLE courses ADD COLUMN ${column.name} ${column.definition}`);
+      logStep(`Added missing course column ${column.name}`);
+    } catch (error) {
+      if (error?.code === 'ER_DUP_FIELDNAME') {
+        logStep(`Course column ${column.name} already exists; skipping`);
+        continue;
+      }
+
+      error.step = 'ensure-course-columns';
+      error.location = 'src/config/db.js';
+      error.action = `Add the ${column.name} column to the courses table manually or start with a clean schema.`;
+      throw error;
+    }
+  }
+};
+
+const ensureEnrollmentColumns = async (connection) => {
+  logStep('Validating enrollment columns...');
+
+  const [rows] = await connection.query(
+    `SELECT COLUMN_NAME
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'enrollments'`,
+    [databaseName]
+  );
+
+  const columnNames = new Set(rows.map((row) => row.COLUMN_NAME));
+
+  for (const column of enrollmentOptionalColumns) {
+    if (columnNames.has(column.name)) continue;
+
+    try {
+      await connection.query(`ALTER TABLE enrollments ADD COLUMN ${column.name} ${column.definition}`);
+      logStep(`Added missing enrollment column ${column.name}`);
+    } catch (error) {
+      if (error?.code === 'ER_DUP_FIELDNAME') {
+        logStep(`Enrollment column ${column.name} already exists; skipping`);
+        continue;
+      }
+
+      error.step = 'ensure-enrollment-columns';
+      error.location = 'src/config/db.js';
+      error.action = `Add the ${column.name} column to the enrollments table manually or start with a clean schema.`;
+      throw error;
+    }
+  }
+};
+
 const ensureIndexes = async (connection) => {
   logStep('Validating indexes...');
 
@@ -308,6 +380,8 @@ const performBootstrap = async () => {
   try {
     await validateRequiredTables(connection);
     await validateAuthTable(connection);
+    await ensureCourseColumns(connection);
+    await ensureEnrollmentColumns(connection);
     await ensureAttendanceColumns(connection);
     await ensureIndexes(connection);
   } finally {

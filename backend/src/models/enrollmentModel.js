@@ -1,23 +1,44 @@
 import { query } from '../config/db.js';
+import { getClassDaysLabel, getSessionTimeLabel, normalizeClassDays } from '../utils/courseSchedule.js';
+
+const mapEnrollmentRow = (row) => {
+  if (!row) return null;
+
+  const classDays = normalizeClassDays(row.class_days);
+  const session = String(row.session || 'morning').toLowerCase();
+
+  return {
+    ...row,
+    class_days: row.class_days,
+    classDays,
+    classDaysLabel: getClassDaysLabel(classDays),
+    session,
+    sessionLabel: session.charAt(0).toUpperCase() + session.slice(1),
+    sessionTimeLabel: getSessionTimeLabel(session),
+    startDate: row.start_date || row.program_start_date || null,
+    endDate: row.end_date || row.program_end_date || null,
+    programStartDate: row.start_date || row.program_start_date || null,
+    programEndDate: row.end_date || row.program_end_date || null
+  };
+};
 
 export const createEnrollment = async ({
   id,
   studentId,
   courseId,
-  programStartDate,
-  programEndDate,
+  session = 'morning',
   enrollmentStatus = 'active'
 }) => {
   await query(
-    'INSERT INTO enrollments (id, student_id, course_id, program_start_date, program_end_date, enrollment_status) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, studentId, courseId, programStartDate, programEndDate, enrollmentStatus]
+    'INSERT INTO enrollments (id, student_id, course_id, session, enrollment_status) VALUES (?, ?, ?, ?, ?)',
+    [id, studentId, courseId, session, enrollmentStatus]
   );
   return findEnrollmentById(id);
 };
 
 export const findEnrollmentById = async (id) => {
   const [rows] = await query(
-    `SELECT e.*, u.full_name AS student_name, u.email AS student_email, c.name AS course_name
+    `SELECT e.*, u.full_name AS student_name, u.email AS student_email, c.name AS course_name, c.class_days, c.start_date, c.end_date
      FROM enrollments e
      JOIN users u ON u.id = e.student_id
      JOIN courses c ON c.id = e.course_id
@@ -25,18 +46,18 @@ export const findEnrollmentById = async (id) => {
      LIMIT 1`,
     [id]
   );
-  return rows[0] || null;
+  return mapEnrollmentRow(rows[0] || null);
 };
 
 export const listEnrollments = async () => {
   const [rows] = await query(
-    `SELECT e.*, u.full_name AS student_name, u.email AS student_email, c.name AS course_name
+    `SELECT e.*, u.full_name AS student_name, u.email AS student_email, c.name AS course_name, c.class_days, c.start_date, c.end_date
      FROM enrollments e
      JOIN users u ON u.id = e.student_id
      JOIN courses c ON c.id = e.course_id
      ORDER BY e.created_at DESC`
   );
-  return rows;
+  return rows.map(mapEnrollmentRow);
 };
 
 export const listUnenrolledStudents = async () => {
@@ -68,21 +89,24 @@ export const listEnrolledStudents = async () => {
        u.email,
        u.phone,
        c.name AS course_name,
+       c.class_days,
+       c.start_date,
+       c.end_date,
+       e.session,
        e.enrollment_status,
-       e.program_start_date,
-       e.program_end_date,
        e.created_at
      FROM enrollments e
      JOIN users u ON u.id = e.student_id
      JOIN courses c ON c.id = e.course_id
      WHERE u.role = 'student'
-     ORDER BY e.created_at DESC, e.id DESC`
+      ORDER BY e.created_at DESC, e.id DESC`
   );
 
   const latestByStudent = new Map();
 
   for (const row of rows) {
     if (!latestByStudent.has(row.student_id)) {
+      const normalized = mapEnrollmentRow(row);
       latestByStudent.set(row.student_id, {
         studentId: row.student_id,
         fullName: row.full_name,
@@ -90,8 +114,15 @@ export const listEnrolledStudents = async () => {
         phone: row.phone,
         courseName: row.course_name,
         status: row.enrollment_status,
-        programStartDate: row.program_start_date,
-        programEndDate: row.program_end_date
+        session: normalized.session,
+        sessionLabel: normalized.sessionLabel,
+        sessionTimeLabel: normalized.sessionTimeLabel,
+        classDays: normalized.classDays,
+        classDaysLabel: normalized.classDaysLabel,
+        startDate: normalized.startDate,
+        endDate: normalized.endDate,
+        programStartDate: normalized.programStartDate,
+        programEndDate: normalized.programEndDate
       });
     }
   }
@@ -166,11 +197,13 @@ export const listStudentEnrollmentRows = async () => {
        u.phone,
        e.id AS enrollment_id,
        e.course_id,
+       e.session,
        e.enrollment_status,
-       e.program_start_date,
-       e.program_end_date,
        e.created_at AS enrollment_created_at,
        c.name AS course_name,
+       c.class_days,
+       c.start_date,
+       c.end_date,
        s.id AS schedule_id,
        s.day_of_week,
        s.start_time,

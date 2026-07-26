@@ -12,7 +12,7 @@ import {
   listEnrollments,
   listUnenrolledStudents
 } from '../models/enrollmentModel.js';
-import { syncCourseSchedules } from './scheduleService.js';
+import { getClassDaysLabel, getSessionDefinition, normalizeClassDays } from '../utils/courseSchedule.js';
 
 const buildStudentEnrollmentSummaries = (rows = []) => {
   const grouped = new Map();
@@ -30,6 +30,7 @@ const buildStudentEnrollmentSummaries = (rows = []) => {
         courseNames: [],
         activeCourseNames: [],
         courseSummary: '',
+        classDaysSummary: '',
         status: 'unassigned'
       });
     }
@@ -40,19 +41,22 @@ const buildStudentEnrollmentSummaries = (rows = []) => {
 
     const student = grouped.get(row.student_id);
     const enrollment = student.enrollments.find((item) => item.enrollmentId === row.enrollment_id);
-
-    const schedule = row.day_of_week
-      ? {
-          id: row.schedule_id,
-          dayOfWeek: row.day_of_week,
-          startTime: row.start_time,
-          endTime: row.end_time
-        }
-      : null;
+    const existingClassDays = normalizeClassDays(enrollment?.classDays || row.class_days);
+    const legacyDays = row.day_of_week ? [row.day_of_week] : [];
+    const classDays = existingClassDays.length ? existingClassDays : legacyDays;
+    const session = String(row.session || enrollment?.session || 'morning').toLowerCase();
+    const sessionDefinition = getSessionDefinition(session);
 
     if (enrollment) {
-      if (schedule) {
-        enrollment.schedules.push(schedule);
+      if (legacyDays.length) {
+        enrollment.classDays = Array.from(new Set([...(enrollment.classDays || []), ...legacyDays]));
+        enrollment.classDaysLabel = getClassDaysLabel(enrollment.classDays);
+        enrollment.schedules = [{
+          id: row.enrollment_id,
+          dayOfWeek: enrollment.classDaysLabel,
+          startTime: sessionDefinition.startTime,
+          endTime: sessionDefinition.endTime
+        }];
       }
       continue;
     }
@@ -62,10 +66,24 @@ const buildStudentEnrollmentSummaries = (rows = []) => {
       courseId: row.course_id,
       courseName: row.course_name,
       status: row.enrollment_status,
-      programStartDate: row.program_start_date,
-      programEndDate: row.program_end_date,
+      session,
+      sessionLabel: sessionDefinition.label,
+      sessionTimeLabel: sessionDefinition.displayTime,
+      classDays,
+      classDaysLabel: getClassDaysLabel(classDays),
+      startDate: row.start_date || row.program_start_date || null,
+      endDate: row.end_date || row.program_end_date || null,
+      programStartDate: row.start_date || row.program_start_date || null,
+      programEndDate: row.end_date || row.program_end_date || null,
       createdAt: row.enrollment_created_at,
-      schedules: schedule ? [schedule] : []
+      schedules: classDays.length
+        ? [{
+            id: row.enrollment_id,
+            dayOfWeek: getClassDaysLabel(classDays),
+            startTime: sessionDefinition.startTime,
+            endTime: sessionDefinition.endTime
+          }]
+        : []
     };
 
     student.enrollments.push(nextEnrollment);
@@ -86,6 +104,7 @@ const buildStudentEnrollmentSummaries = (rows = []) => {
     activeCourseCount: student.activeEnrollments.length,
     activeCourseNames: student.activeCourseNames,
     courseSummary: student.courseNames.join(', '),
+    classDaysSummary: student.enrollments.map((item) => item.classDaysLabel).filter(Boolean).join(' | '),
     courseName: student.courseNames.join(', '),
     status: student.activeEnrollments.length ? 'active' : student.enrollments.length ? 'inactive' : 'unassigned',
     latestProgramStartDate: student.enrollments[0]?.programStartDate || null,
@@ -98,10 +117,8 @@ const buildStudentEnrollmentSummaries = (rows = []) => {
 export const enrollStudent = async ({
   studentId,
   courseId,
-  programStartDate,
-  programEndDate,
+  session = 'morning',
   enrollmentStatus = 'active',
-  courseSchedules = []
 }) => {
   const student = await findUserById(studentId);
   if (!student || student.role !== 'student') {
@@ -118,20 +135,21 @@ export const enrollStudent = async ({
     throw new ApiError(409, 'Student already has an active enrollment for this course.');
   }
 
+  const normalizedSession = String(session || 'morning').toLowerCase();
+  if (!['morning', 'afternoon'].includes(normalizedSession)) {
+    throw new ApiError(400, 'A valid session is required.');
+  }
+
   const enrollment = await createEnrollment({
     id: createId(),
     studentId,
     courseId,
-    programStartDate,
-    programEndDate,
+    session: normalizedSession,
     enrollmentStatus
   });
 
-  const createdSchedules = await syncCourseSchedules(courseId, courseSchedules);
-
   return {
-    enrollment,
-    schedules: createdSchedules
+    enrollment
   };
 };
 
@@ -143,6 +161,7 @@ export const updateEnrollment = async (enrollmentId, updates) => {
 
   const nextStudentId = updates.studentId ?? existing.student_id;
   const nextCourseId = updates.courseId ?? existing.course_id;
+  const nextSession = updates.session ?? existing.session;
 
   if (updates.studentId) {
     const student = await findUserById(nextStudentId);
@@ -158,15 +177,18 @@ export const updateEnrollment = async (enrollmentId, updates) => {
     }
   }
 
+  if (updates.session && !['morning', 'afternoon'].includes(String(updates.session).toLowerCase())) {
+    throw new ApiError(400, 'A valid session is required.');
+  }
+
   await query(
     `UPDATE enrollments
-     SET student_id = ?, course_id = ?, program_start_date = ?, program_end_date = ?, enrollment_status = ?
+     SET student_id = ?, course_id = ?, session = ?, enrollment_status = ?
      WHERE id = ?`,
     [
       nextStudentId,
       nextCourseId,
-      updates.programStartDate ?? existing.program_start_date,
-      updates.programEndDate ?? existing.program_end_date,
+      String(nextSession || 'morning').toLowerCase(),
       updates.enrollmentStatus ?? existing.enrollment_status,
       enrollmentId
     ]

@@ -399,6 +399,32 @@ export default function Students() {
                 </div>
 
                 <Card className="mt-4 p-4 md:p-5">
+                  <h3 className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-500">Course schedule</h3>
+                  <div className="mt-4 space-y-3">
+                    {(attendanceReport?.enrollments || []).length ? attendanceReport.enrollments.map((enrollment) => (
+                      <div key={enrollment.enrollmentId} className="rounded-2xl border border-border bg-white p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-text">{enrollment.courseName}</p>
+                            <p className="mt-1 text-sm text-slate-500">{enrollment.classDaysLabel || 'No class days'}</p>
+                          </div>
+                          <Badge variant={enrollment.status === 'active' ? 'success' : 'warning'} className="capitalize">
+                            {enrollment.sessionLabel || enrollment.session || enrollment.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-3 text-sm text-slate-600">
+                          {enrollment.sessionTimeLabel || '9:00 AM - 12:00 PM'}
+                        </p>
+                      </div>
+                    )) : (
+                      <p className="rounded-2xl border border-dashed border-border bg-white px-4 py-5 text-sm text-slate-500">
+                        No course schedule available yet.
+                      </p>
+                    )}
+                  </div>
+                </Card>
+
+                <Card className="mt-4 p-4 md:p-5">
                   <div className="flex flex-col gap-3 md:flex-row md:items-end">
                     <div className="flex-1">
                       <Select

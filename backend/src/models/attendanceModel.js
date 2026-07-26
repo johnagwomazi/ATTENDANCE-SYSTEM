@@ -1,4 +1,5 @@
 import { query } from '../config/db.js';
+import { isCourseOpenOnWeekday } from '../utils/courseSchedule.js';
 
 const applyAttendanceStatusFilter = (filters, params, status) => {
   if (!status) return;
@@ -162,20 +163,32 @@ export const getAttendanceCounts = async ({ fromDate, toDate, courseId = null, s
 
 export const createAbsentRowsForDate = async (attendanceDate, weekday) => {
   await query(
-    `INSERT INTO attendance (id, student_id, course_id, enrollment_id, attendance_date, check_in_time, is_late, status)
+    `INSERT IGNORE INTO attendance (id, student_id, course_id, enrollment_id, attendance_date, check_in_time, is_late, status)
      SELECT UUID(), grouped.student_id, grouped.course_id, grouped.enrollment_id, ?, NULL, 0, 'absent'
      FROM (
        SELECT DISTINCT e.id AS enrollment_id, e.student_id, e.course_id
        FROM enrollments e
-       INNER JOIN schedules s ON s.course_id = e.course_id
+       INNER JOIN courses c ON c.id = e.course_id
        LEFT JOIN attendance a
          ON a.student_id = e.student_id
         AND a.course_id = e.course_id
         AND a.attendance_date = ?
        WHERE e.enrollment_status = 'active'
-         AND s.day_of_week = ?
+         AND (
+           JSON_CONTAINS(c.class_days, JSON_QUOTE(?))
+           OR EXISTS (
+             SELECT 1
+             FROM schedules s
+             WHERE s.course_id = e.course_id
+               AND s.day_of_week = ?
+           )
+         )
          AND a.id IS NULL
      ) AS grouped`,
-    [attendanceDate, attendanceDate, weekday]
+    [attendanceDate, attendanceDate, weekday, weekday]
   );
+};
+
+export const ensureAbsentRowsForDate = async (attendanceDate, weekday) => {
+  await createAbsentRowsForDate(attendanceDate, weekday);
 };
