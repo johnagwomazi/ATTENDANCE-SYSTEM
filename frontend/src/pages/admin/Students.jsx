@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, Filter, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAdminStore } from '../../store/adminStore';
 import { adminService } from '../../services/adminService';
 import { Table } from '../../components/ui/Table';
@@ -9,6 +11,8 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
+import { Modal } from '../../components/ui/Modal';
+import { EnrollmentForm } from '../../components/forms/EnrollmentForm';
 import { formatDate, formatTime } from '../../utils/format';
 import { AttendanceBadge } from '../../components/shared/AttendanceBadge';
 
@@ -31,23 +35,41 @@ const emptyHistoryState = {
 };
 
 export default function Students() {
-  const { students, fetchStudents } = useAdminStore();
+  const { students, courses, fetchStudents, fetchCourses, updateEnrollment } = useAdminStore();
   const [query, setQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('all');
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceReport, setAttendanceReport] = useState(emptyHistoryState);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editStudent, setEditStudent] = useState(null);
+  const [selectedEnrollmentId, setSelectedEnrollmentId] = useState('');
   const [attendanceFilters, setAttendanceFilters] = useState({
     courseId: 'all',
     from: '',
     to: '',
     status: 'all'
   });
+  const {
+    control: editControl,
+    handleSubmit: handleEditSubmit,
+    register: editRegister,
+    reset: editReset,
+    formState: { errors: editErrors, isSubmitting: editSubmitting }
+  } = useForm({
+    defaultValues: {
+      studentId: '',
+      courseId: '',
+      session: 'morning'
+    }
+  });
 
   useEffect(() => {
     fetchStudents();
-  }, [fetchStudents]);
+    fetchCourses();
+  }, [fetchStudents, fetchCourses]);
 
   const courseOptions = useMemo(() => {
     const uniqueCourses = new Map();
@@ -120,6 +142,53 @@ export default function Students() {
     }
   };
 
+  const closeEditEnrollment = () => {
+    setEditOpen(false);
+    setEditLoading(false);
+    setEditStudent(null);
+    setSelectedEnrollmentId('');
+    editReset({
+      studentId: '',
+      courseId: '',
+      session: 'morning'
+    });
+  };
+
+  const openEditEnrollment = async (student) => {
+    if (!student) return;
+
+    setEditLoading(true);
+    try {
+      const response = await adminService.fetchStudentProfile(student.id);
+      const profile = response?.data || response || {};
+      const profileStudent = profile.student || student;
+      const profileEnrollments = profile.enrollments || student.enrollments || [];
+
+      if (!profileEnrollments.length) {
+        toast.error('This student has no enrollment to edit.');
+        return;
+      }
+
+      const preferredEnrollment = profileEnrollments.find((enrollment) => enrollment.status === 'active') || profileEnrollments[0];
+
+      setEditStudent({
+        ...profileStudent,
+        enrollments: profileEnrollments
+      });
+      setSelectedEnrollmentId(preferredEnrollment.enrollmentId);
+      editReset({
+        studentId: profileStudent.id,
+        courseId: preferredEnrollment.courseId || '',
+        session: preferredEnrollment.session || 'morning'
+      });
+      setEditOpen(true);
+    } catch (error) {
+      toast.error(error.message || 'Unable to load student enrollment details.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const closeAttendanceHistory = () => {
     setAttendanceOpen(false);
     setSelectedStudent(null);
@@ -168,6 +237,40 @@ export default function Students() {
   const summary = attendanceReport?.summary || emptyHistoryState.summary;
   const attendanceRecords = attendanceReport?.records || [];
   const studentProfile = attendanceReport?.student || selectedStudent;
+  const editEnrollments = editStudent?.enrollments || [];
+  const selectedEditEnrollment =
+    editEnrollments.find((enrollment) => enrollment.enrollmentId === selectedEnrollmentId) || editEnrollments[0] || null;
+
+  const handleEditEnrollmentChange = (enrollmentId) => {
+    const nextEnrollment = editEnrollments.find((enrollment) => enrollment.enrollmentId === enrollmentId);
+    if (!nextEnrollment) return;
+
+    setSelectedEnrollmentId(enrollmentId);
+    editReset({
+      studentId: editStudent?.id || '',
+      courseId: nextEnrollment.courseId || '',
+      session: nextEnrollment.session || 'morning'
+    });
+  };
+
+  const submitEnrollmentEdit = handleEditSubmit(async (values) => {
+    if (!selectedEditEnrollment) {
+      toast.error('Please choose an enrollment to edit.');
+      return;
+    }
+
+    try {
+      await updateEnrollment(selectedEditEnrollment.enrollmentId, {
+        studentId: values.studentId,
+        courseId: values.courseId,
+        session: values.session
+      });
+      toast.success('Enrollment updated successfully.');
+      closeEditEnrollment();
+    } catch (error) {
+      toast.error(error.message || 'Unable to update enrollment.');
+    }
+  });
 
   return (
     <div className="space-y-6">
@@ -271,6 +374,14 @@ export default function Students() {
                       <Button variant="secondary" onClick={() => openAttendanceHistory(student)} className="w-full">
                         Attendance
                       </Button>
+                      <Button
+                        variant="orange"
+                        onClick={() => openEditEnrollment(student)}
+                        className="w-full"
+                        disabled={!student.enrollments?.length}
+                      >
+                        Edit Enrollment
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -293,7 +404,7 @@ export default function Students() {
             { key: 'phone', label: 'Phone' },
             { key: 'courses', label: 'Courses' },
             { key: 'status', label: 'Status' },
-            { key: 'attendance', label: 'Attendance History' }
+            { key: 'actions', label: 'Actions' }
           ]}
           rows={filteredStudents}
           emptyMessage="No students found. Try adjusting your search or course filter."
@@ -309,9 +420,14 @@ export default function Students() {
                 </Badge>
               </td>
               <td className="px-5 py-4">
-                <Button variant="secondary" onClick={() => openAttendanceHistory(row)}>
-                  View Attendance
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => openAttendanceHistory(row)}>
+                    View Attendance
+                  </Button>
+                  <Button variant="orange" onClick={() => openEditEnrollment(row)} disabled={!row.enrollments?.length}>
+                    Edit Enrollment
+                  </Button>
+                </div>
               </td>
             </>
           )}
@@ -509,6 +625,59 @@ export default function Students() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      <Modal
+        open={editOpen}
+        title={editStudent ? `Edit enrollment for ${editStudent.fullName || editStudent.full_name || 'Student'}` : 'Edit enrollment'}
+        onClose={closeEditEnrollment}
+      >
+        {editLoading ? (
+          <div className="py-10 text-center text-sm text-slate-500">Loading enrollment details...</div>
+        ) : (
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-border bg-slate-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Selected student</p>
+              <p className="mt-2 text-base font-semibold text-text">{editStudent?.fullName || editStudent?.full_name || '-'}</p>
+              <p className="text-sm text-slate-500">{editStudent?.email || ''}</p>
+            </div>
+
+            {editEnrollments.length > 1 ? (
+              <Select
+                label="Enrollment to edit"
+                value={selectedEnrollmentId}
+                onChange={(event) => handleEditEnrollmentChange(event.target.value)}
+              >
+                {editEnrollments.map((enrollment) => (
+                  <option key={enrollment.enrollmentId} value={enrollment.enrollmentId}>
+                    {enrollment.courseName} | {enrollment.classDaysLabel || 'No class days'} | {enrollment.sessionLabel || enrollment.session}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+
+            {selectedEditEnrollment ? (
+              <div className="rounded-2xl border border-border bg-white p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Current enrollment</p>
+                <p className="mt-2 text-sm font-semibold text-text">{selectedEditEnrollment.courseName}</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedEditEnrollment.classDaysLabel || 'No class days'} | {selectedEditEnrollment.sessionLabel || selectedEditEnrollment.session}
+                </p>
+              </div>
+            ) : null}
+
+            <EnrollmentForm
+              control={editControl}
+              register={editRegister}
+              errors={editErrors}
+              students={students}
+              courses={courses}
+              onSubmit={submitEnrollmentEdit}
+              submitLabel={editSubmitting ? 'Saving...' : 'Save Changes'}
+              hideStudent
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

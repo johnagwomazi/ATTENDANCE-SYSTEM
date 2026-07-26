@@ -181,6 +181,14 @@ export const updateEnrollment = async (enrollmentId, updates) => {
     throw new ApiError(400, 'A valid session is required.');
   }
 
+  const nextEnrollmentStatus = String(updates.enrollmentStatus ?? existing.enrollment_status ?? 'active').toLowerCase();
+  if (nextEnrollmentStatus === 'active') {
+    const conflictingEnrollment = await findActiveEnrollmentByStudentAndCourse(nextStudentId, nextCourseId);
+    if (conflictingEnrollment && conflictingEnrollment.id !== existing.id) {
+      throw new ApiError(409, 'Student already has an active enrollment for this course.');
+    }
+  }
+
   await query(
     `UPDATE enrollments
      SET student_id = ?, course_id = ?, session = ?, enrollment_status = ?

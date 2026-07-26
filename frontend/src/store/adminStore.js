@@ -49,13 +49,19 @@ export const useAdminStore = create((set) => ({
 
   updateEnrollment: async (id, payload) => {
     const response = await adminService.updateEnrollment(id, payload);
-    await useAdminStore.getState().fetchEnrollments();
+    await Promise.all([
+      useAdminStore.getState().fetchStudents(),
+      useAdminStore.getState().fetchEnrollments()
+    ]);
     return response;
   },
 
   endProgram: async (id) => {
     const response = await adminService.endProgram(id);
-    await useAdminStore.getState().fetchEnrollments();
+    await Promise.all([
+      useAdminStore.getState().fetchStudents(),
+      useAdminStore.getState().fetchEnrollments()
+    ]);
     return response;
   },
 
