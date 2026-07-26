@@ -84,7 +84,7 @@ export default function Courses() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Course management</p>
-            <h1 className="mt-3 text-3xl font-black text-text">Courses</h1>
+            <h1 className="mt-3 text-2xl font-black text-text sm:text-3xl">Courses</h1>
           </div>
           <Button onClick={openCreate}>Create Course</Button>
         </div>

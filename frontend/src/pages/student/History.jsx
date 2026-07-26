@@ -65,16 +65,16 @@ export default function History() {
   const current = useMemo(() => records.slice((page - 1) * pageSize, page * pageSize), [page, records]);
 
   return (
-    <Card className="p-6 md:p-8">
+    <Card className="p-5 md:p-8">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Attendance History</p>
-          <h1 className="mt-3 text-3xl font-black text-text">Search and review your records</h1>
+          <h1 className="mt-3 text-2xl font-black text-text sm:text-3xl">Search and review your records</h1>
           <p className="mt-2 text-sm text-slate-500">
             Present: {summary.presentCount || 0} | Late: {summary.lateCount || 0} | Absent: {summary.absentCount || 0} | {summary.attendancePercentage || 0}%
           </p>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -106,12 +106,12 @@ export default function History() {
           <tbody className="divide-y divide-border bg-surface">
             {current.length ? current.map((item) => (
               <tr key={item.id}>
-                <td className="px-5 py-4 text-sm font-medium text-text">{formatDate(item.date || item.attendance_date || item.created_at)}</td>
+                <td className="px-4 py-4 text-sm font-medium text-text sm:px-5">{formatDate(item.date || item.attendance_date || item.created_at)}</td>
                 <td className="px-5 py-4">
                   <AttendanceBadge status={item.status} isLate={item.is_late || item.isLate} />
                 </td>
-                <td className="px-5 py-4 text-sm text-slate-600">{formatTime(item.time || item.check_in_time)}</td>
-                <td className="px-5 py-4 text-sm text-slate-600">{item.course || item.course_name || '-'}</td>
+                <td className="px-4 py-4 text-sm text-slate-600 sm:px-5">{formatTime(item.time || item.check_in_time)}</td>
+                <td className="px-4 py-4 text-sm text-slate-600 sm:px-5">{item.course || item.course_name || '-'}</td>
               </tr>
             )) : (
               <tr>

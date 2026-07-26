@@ -35,7 +35,7 @@ export default function AdminDashboard() {
         description="Overview cards, enrollments, attendance, and reporting all in one polished workspace."
       />
 
-      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Students" value={students.length} icon={Users} tone="primary" index={0} />
         <StatCard label="Courses" value={courses.length} icon={BookOpen} tone="sky" index={1} />
         <StatCard label="Attendance" value={summary.totalAttendance || enrollments.length || 0} icon={ClipboardList} tone="orange" index={2} />

@@ -41,7 +41,7 @@ export default function ManagerDashboard() {
         description="Live feeds, expiration alerts, and daily performance at a glance."
       />
 
-      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Present Today" value={summary.presentCount || 0} icon={CheckCircle2} tone="success" index={0} />
         <StatCard label="Late Today" value={summary.lateCount || 0} icon={Clock3} tone="orange" index={1} />
         <StatCard label="Absent Today" value={summary.absentCount || 0} icon={BellRing} tone="sky" index={2} />

@@ -103,11 +103,11 @@ export default function Attendance({ publicMode = false }) {
         <Badge variant="default">Secure Session</Badge>
       </div>
 
-      <Card className="p-6 md:p-8">
+      <Card className="p-5 md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Student attendance</p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-text">Check in with your QR code</h1>
+            <h1 className="mt-3 text-2xl font-black tracking-tight text-text sm:text-3xl">Check in with your QR code</h1>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-500">
               Scan the QR code, confirm the 8-character code, and submit your attendance in one smooth flow.
             </p>
@@ -146,7 +146,7 @@ export default function Attendance({ publicMode = false }) {
             </form>
 
             {scannerEnabled ? (
-              <div className="overflow-hidden rounded-[28px] border border-border bg-slate-50 p-4">
+              <div className="overflow-hidden rounded-[28px] border border-border bg-slate-50 p-3 sm:p-4">
                 <p className="mb-3 text-sm font-semibold text-text">Camera Scanner</p>
                 <QrScanner
                   onScan={(decodedText) => {
@@ -164,7 +164,7 @@ export default function Attendance({ publicMode = false }) {
               <AttendanceResult result={result} />
             ) : (
               <motion.div
-                className="rounded-[28px] border border-dashed border-border bg-slate-50 px-6 py-14 text-center"
+                className="rounded-[28px] border border-dashed border-border bg-slate-50 px-5 py-12 text-center sm:px-6 sm:py-14"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >

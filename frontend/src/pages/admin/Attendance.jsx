@@ -154,11 +154,11 @@ export default function AdminAttendance() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6">
+      <Card className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Live Monitoring</p>
-            <h1 className="mt-3 text-3xl font-black text-text">Attendance feed</h1>
+            <h1 className="mt-3 text-2xl font-black text-text sm:text-3xl">Attendance feed</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="primary">Realtime</Badge>
@@ -193,7 +193,7 @@ export default function AdminAttendance() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.98 }}
                     transition={{ duration: 0.16 }}
-                    className="absolute right-0 z-30 mt-3 w-[22rem] max-w-[calc(100vw-2rem)] rounded-[24px] border border-border bg-surface p-4 shadow-soft"
+                    className="absolute right-0 z-30 mt-3 flex max-h-[calc(100vh-8rem)] w-[22rem] max-w-[calc(100vw-2rem)] flex-col rounded-[24px] border border-border bg-surface p-4 shadow-soft"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -209,7 +209,7 @@ export default function AdminAttendance() {
                       </Button>
                     </div>
 
-                    <div className="mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
+                    <div className="mt-4 max-h-[18rem] space-y-3 overflow-y-auto pr-1 sm:max-h-[22rem]">
                       {alerts.length ? alerts.map((alert) => {
                         const Icon = alert.Icon;
                         const toneClasses = {

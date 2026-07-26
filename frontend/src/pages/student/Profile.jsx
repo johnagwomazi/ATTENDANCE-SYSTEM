@@ -10,16 +10,16 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6 md:p-8">
+      <Card className="p-5 md:p-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Profile</p>
-            <h1 className="mt-3 text-3xl font-black text-text">{user?.full_name || user?.fullName || 'Student Profile'}</h1>
+            <h1 className="mt-3 text-2xl font-black text-text sm:text-3xl">{user?.full_name || user?.fullName || 'Student Profile'}</h1>
             <p className="mt-2 text-sm text-slate-500">Your account and enrollment snapshot.</p>
           </div>
           <Badge variant="success">Active Account</Badge>
         </div>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {[
             ['Email', user?.email || '-'],
             ['Phone', user?.phone || '-'],

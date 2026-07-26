@@ -57,7 +57,7 @@ export const AdminMoreSheet = ({ open, onClose }) => {
             role="dialog"
             aria-modal="true"
             aria-label="More Actions"
-            className="absolute inset-x-0 bottom-0 rounded-t-3xl border border-border bg-white shadow-[0_-18px_50px_rgba(15,23,42,0.16)]"
+            className="absolute inset-x-0 bottom-0 max-h-[calc(100vh-4rem)] overflow-y-auto rounded-t-3xl border border-border bg-white shadow-[0_-18px_50px_rgba(15,23,42,0.16)]"
             initial={{ y: 36, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 36, opacity: 0 }}
@@ -65,7 +65,7 @@ export const AdminMoreSheet = ({ open, onClose }) => {
           >
             <div className="mx-auto mt-3 h-1.5 w-14 rounded-full bg-slate-200" />
 
-            <div className="px-4 pb-4 pt-3">
+            <div className="space-y-3 px-4 pb-4 pt-3">
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Admin actions</p>

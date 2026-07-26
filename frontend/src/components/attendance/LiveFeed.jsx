@@ -6,9 +6,9 @@ import { AttendanceBadge } from '../shared/AttendanceBadge';
 
 export const LiveFeed = ({ items = [], title = 'Live Attendance' }) => {
   return (
-    <Card className="p-5">
+    <Card className="p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-extrabold text-text">{title}</h3>
+        <h3 className="text-base font-extrabold text-text sm:text-lg">{title}</h3>
         <Badge variant="primary">{items.length} recent</Badge>
       </div>
       <div className="space-y-3">
@@ -19,7 +19,7 @@ export const LiveFeed = ({ items = [], title = 'Live Attendance' }) => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="rounded-2xl border border-border bg-slate-50 p-4"
+              className="rounded-2xl border border-border bg-slate-50 p-3 sm:p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

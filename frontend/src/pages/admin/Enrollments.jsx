@@ -127,7 +127,7 @@ export default function Enrollments() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Enrollment management</p>
-            <h1 className="text-3xl font-black text-text">Enroll students into courses</h1>
+            <h1 className="text-2xl font-black text-text sm:text-3xl">Enroll students into courses</h1>
             <p className="max-w-2xl text-sm text-slate-500">
               Select a student, choose a course, and assign the session they will attend.
             </p>

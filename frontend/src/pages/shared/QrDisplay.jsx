@@ -45,15 +45,15 @@ export default function QrDisplay() {
   return (
     <div className="flex min-h-[calc(100vh-2rem)] items-center justify-center px-4 py-8">
       <div className="w-full space-y-6">
-        <Card className="p-6 text-center">
+        <Card className="p-5 text-center sm:p-6">
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-orange">Display mode</p>
-          <h1 className="mt-3 text-4xl font-black tracking-tight text-text">QR Check-In Display</h1>
+          <h1 className="mt-3 text-2xl font-black tracking-tight text-text sm:text-3xl lg:text-4xl">QR Check-In Display</h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm leading-7 text-slate-500">
             This screen refreshes the attendance session automatically every 30 seconds.
           </p>
         </Card>
         {loading && !session ? (
-          <Card className="p-10 text-center text-sm text-slate-500">Generating session...</Card>
+          <Card className="p-6 text-center text-sm text-slate-500 sm:p-10">Generating session...</Card>
         ) : (
           <QrDisplayPanel session={session} countdown={countdown} />
         )}

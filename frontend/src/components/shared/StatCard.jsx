@@ -11,11 +11,11 @@ export const StatCard = ({ label, value, helper, icon: Icon, tone = 'primary', i
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-slate-500">{label}</p>
-            <p className="mt-2 text-3xl font-extrabold tracking-tight text-text">{value}</p>
+            <p className="mt-2 text-2xl font-extrabold tracking-tight text-text sm:text-3xl">{value}</p>
             {helper ? <p className="mt-2 text-xs font-medium text-slate-400">{helper}</p> : null}
           </div>
           {Icon ? (

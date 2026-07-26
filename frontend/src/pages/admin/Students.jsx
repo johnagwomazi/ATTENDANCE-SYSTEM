@@ -279,7 +279,7 @@ export default function Students() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Student management</p>
-              <h1 className="mt-3 text-3xl font-black text-text">Students</h1>
+              <h1 className="mt-3 text-2xl font-black text-text sm:text-3xl">Students</h1>
               <p className="mt-2 text-sm text-slate-500">
                 Review enrolled students, their course load, and attendance history from one place.
               </p>

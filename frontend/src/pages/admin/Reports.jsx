@@ -8,9 +8,9 @@ import { Badge } from '../../components/ui/Badge';
 const colors = ['#272A73', '#F58220', '#8FC6E8'];
 
 const SummaryCard = ({ title, value }) => (
-  <Card className="p-5">
+  <Card className="p-4 sm:p-5">
     <p className="text-sm text-slate-500">{title}</p>
-    <p className="mt-2 text-3xl font-black text-text">{value}</p>
+    <p className="mt-2 text-2xl font-black text-text sm:text-3xl">{value}</p>
   </Card>
 );
 
@@ -35,7 +35,7 @@ export default function Reports() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange">Reports</p>
-            <h1 className="mt-3 text-3xl font-black text-text">Attendance analytics</h1>
+            <h1 className="mt-3 text-2xl font-black text-text sm:text-3xl">Attendance analytics</h1>
           </div>
           <div className="flex flex-wrap gap-2">
             {['today', 'weekly', 'monthly'].map((item) => (
@@ -47,7 +47,7 @@ export default function Reports() {
         </div>
       </Card>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-4">
         <SummaryCard title="Present" value={selected.presentCount || 0} />
         <SummaryCard title="Late" value={selected.lateCount || 0} />
         <SummaryCard title="Absent" value={selected.absentCount || 0} />
