@@ -289,12 +289,12 @@ export default function LiveAttendance() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {/* <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Present" value={presentCount} icon={CheckCircle2} tone="success" index={0} />
         <StatCard label="Late" value={lateCount} icon={Clock3} tone="orange" index={1} />
         <StatCard label="Expected" value={expectedCount} icon={Users} tone="primary" index={2} />
         <StatCard label="Remaining" value={remainingCount} icon={Bell} tone="sky" index={3} />
-      </div>
+      </div> */}
     </div>
   );
 }
